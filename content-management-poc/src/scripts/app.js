@@ -1,163 +1,391 @@
 // app.js
 
+// Utility functions for common operations
+const Utils = {
+    // DOM utilities
+    createElement(tag, className = '', innerHTML = '') {
+        const element = document.createElement(tag);
+        if (className) element.className = className;
+        if (innerHTML) element.innerHTML = innerHTML;
+        return element;
+    },
+
+    // Cached DOM element getter
+    domCache: new Map(),
+    getElement(id) {
+        if (!this.domCache.has(id)) {
+            this.domCache.set(id, document.getElementById(id));
+        }
+        return this.domCache.get(id);
+    },
+
+    // Batch DOM updates using document fragment
+    batchUpdate(container, elements) {
+        const fragment = document.createDocumentFragment();
+        elements.forEach(el => fragment.appendChild(el));
+        container.innerHTML = '';
+        container.appendChild(fragment);
+    },
+
+    // Event delegation helper
+    delegateEvent(container, selector, event, handler) {
+        container.addEventListener(event, (e) => {
+            if (e.target.matches(selector) || e.target.closest(selector)) {
+                handler(e);
+            }
+        });
+    },
+
+    // Debounce utility for search/filtering
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+};
+
+// Modal utility for consistent modal creation
+const ModalUtils = {
+    activeModals: new Set(),
+
+    create(id, title, content, options = {}) {
+        this.destroy(id); // Ensure no duplicates
+        
+        const modal = Utils.createElement('div', '', `
+            <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+                        background:#fff;padding:32px;border-radius:12px;
+                        box-shadow:0 8px 32px rgba(0,0,0,0.15);z-index:9999;
+                        max-width:${options.maxWidth || '600px'};width:90%;">
+                <h3>${title}</h3>
+                <div class="modal-content">${content}</div>
+                <div class="modal-actions" style="margin-top:18px;">
+                    ${options.customActions || ''}
+                    <button class="modal-close nav-btn">Close</button>
+                </div>
+            </div>
+        `);
+        modal.id = id;
+        
+        // Add close functionality
+        modal.querySelector('.modal-close').onclick = () => this.destroy(id);
+        
+        document.body.appendChild(modal);
+        this.activeModals.add(id);
+        return modal;
+    },
+
+    destroy(id) {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.remove();
+            this.activeModals.delete(id);
+        }
+    },
+
+    destroyAll() {
+        this.activeModals.forEach(id => this.destroy(id));
+    }
+};
+
+// Enhanced notification system
+const NotificationManager = {
+    notifications: [],
+    container: null,
+
+    init() {
+        if (!this.container) {
+            this.container = Utils.createElement('div', 'notification-container');
+            this.container.style.cssText = `
+                position: fixed; top: 20px; right: 20px; z-index: 10000;
+                display: flex; flex-direction: column; gap: 8px;
+            `;
+            document.body.appendChild(this.container);
+        }
+    },
+
+    show(message, type = 'info', duration = 3000) {
+        this.init();
+        
+        const notification = Utils.createElement('div', `notification notification-${type}`, `
+            <span class="notification-message">${message}</span>
+            <button class="notification-close">&times;</button>
+        `);
+        
+        notification.style.cssText = `
+            background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#22c55e' : '#0078ff'};
+            color: white; padding: 12px 16px; border-radius: 6px; display: flex;
+            justify-content: space-between; align-items: center; min-width: 250px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateX(100%);
+            transition: transform 0.3s ease;
+        `;
+        
+        const closeBtn = notification.querySelector('.notification-close');
+        closeBtn.style.cssText = `
+            background: none; border: none; color: white; font-size: 18px;
+            cursor: pointer; margin-left: 12px; opacity: 0.8;
+        `;
+        
+        closeBtn.onclick = () => this.remove(notification);
+        
+        this.container.appendChild(notification);
+        this.notifications.push(notification);
+        
+        // Animate in
+        requestAnimationFrame(() => {
+            notification.style.transform = 'translateX(0)';
+        });
+        
+        // Auto remove
+        if (duration > 0) {
+            setTimeout(() => this.remove(notification), duration);
+        }
+    },
+
+    remove(notification) {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+                this.notifications = this.notifications.filter(n => n !== notification);
+            }
+        }, 300);
+    }
+};
+
+// Legacy notification function for backward compatibility
+const showNotification = (message, type = 'info') => {
+    NotificationManager.show(message, type);
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize the application
     console.log('Content Management Tool Initialized');
 
-    // Example function to handle drag-and-drop scheduling
-    const initDragAndDrop = () => {
-        const calendar = document.getElementById('calendar');
-        calendar.addEventListener('dragover', (event) => {
-            event.preventDefault();
-        });
+    // Navigation system with efficient page management
+    const NavigationManager = {
+        currentPage: 'overview',
+        pageRenderers: new Map(),
+        pageCache: new Map(),
 
-        calendar.addEventListener('drop', (event) => {
-            event.preventDefault();
-            const data = event.dataTransfer.getData('text/plain');
-            // Handle the dropped item (e.g., schedule a task)
-            console.log(`Dropped: ${data}`);
-        });
-    }
+        init() {
+            // Use event delegation for navigation
+            Utils.delegateEvent(document.querySelector('.nav-menu'), 'a', 'click', (e) => {
+                e.preventDefault();
+                const page = e.target.getAttribute('data-page');
+                this.navigateToPage(page);
+            });
 
-    // Example function to show notifications
-    const showNotification = (message) => {
-        const notification = document.createElement('div');
-        notification.className = 'notification';
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        setTimeout(() => {
-            notification.remove();
-        }, 3000);
+            // Initialize with overview page
+            this.navigateToPage('overview');
+        },
+
+        registerPageRenderer(page, renderer) {
+            this.pageRenderers.set(page, renderer);
+        },
+
+        navigateToPage(page) {
+            if (this.currentPage === page) return; // Already on this page
+
+            // Hide all pages efficiently
+            const sections = document.querySelectorAll('.page-section');
+            sections.forEach(section => section.style.display = 'none');
+
+            // Show target page
+            const targetSection = Utils.getElement(page);
+            if (targetSection) {
+                targetSection.style.display = 'block';
+                this.currentPage = page;
+
+                // Call page renderer if exists
+                const renderer = this.pageRenderers.get(page);
+                if (renderer) {
+                    renderer();
+                }
+
+                // Handle special page logic
+                this.handleSpecialPageLogic(page);
+            }
+        },
+
+        handleSpecialPageLogic(page) {
+            switch (page) {
+                case 'review':
+                    updateReviewAssetDropdown();
+                    Utils.getElement('review-canvas').innerHTML = '';
+                    Utils.getElement('review-comments-panel').innerHTML = '';
+                    break;
+            }
+        }
     };
 
-    // Call initialization functions
-    initDragAndDrop();
-    showNotification('Welcome to the Content Management Tool!');
+    // Optimized drag and drop system
+    const DragDropManager = {
+        init() {
+            // Use event delegation for drag and drop
+            document.addEventListener('dragover', this.handleDragOver.bind(this));
+            document.addEventListener('drop', this.handleDrop.bind(this));
+            document.addEventListener('dragstart', this.handleDragStart.bind(this));
+            document.addEventListener('dragend', this.handleDragEnd.bind(this));
+        },
 
-    document.querySelectorAll('.nav-menu a').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const page = this.getAttribute('data-page');
-            document.querySelectorAll('.page-section').forEach(section => {
-                section.style.display = section.id === page ? 'block' : 'none';
-            });
-            // Optionally, call render functions for each page
-            if (page === "editorial-projects") renderEditorialProjects();
-            if (page === "analytics-dashboard") renderAnalyticsDashboard();
-            if (page === "integrations-hub") renderIntegrationsHub();
-            if (page === "assets") renderAssets();
-            if (page === "samples") renderSamples();
-            if (page === "workflow") renderWorkflow();
-            if (page === "review") {
-                updateReviewAssetDropdown();
-                document.getElementById('review-canvas').innerHTML = '';
-                document.getElementById('review-comments-panel').innerHTML = '';
+        handleDragOver(e) {
+            if (e.target.matches('.calendar-day, .calendar, [data-drop-zone]')) {
+                e.preventDefault();
+                e.target.classList.add('dragover');
             }
-            if (page === "overview") renderOverview();
-            if (page === "style-guide") renderStyleGuide();
-        });
-    });
+        },
 
-    // Role selection logic
-    const roleSelect = document.getElementById('role-select');
-    const roleInfo = document.getElementById('role-info');
-    if (roleSelect) {
-        roleSelect.addEventListener('change', function() {
-            const roles = {
-                "studio-manager": "Configure workflows and manage production.",
-                "planning-team": "Schedule sessions and monitor progress.",
-                "sample-manager": "Manage samples and track their status.",
-                "stylist": "Coordinate styling and manage creative briefs.",
-                "photography-team": "Execute shoots and organize assets.",
-                "copywriter": "Create and optimize content.",
-                "art-director": "Review and approve creative assets.",
-                "post-production-vendor": "Handle editing and asset delivery."
-            };
-            const selected = this.value;
-            roleInfo.textContent = roles[selected] || "";
-        });
-    }
+        handleDragStart(e) {
+            if (e.target.matches('.calendar-task, [draggable="true"]')) {
+                e.dataTransfer.setData('text/plain', e.target.dataset.task || e.target.textContent);
+                e.target.classList.add('dragging');
+            }
+        },
 
-    // Drag-and-drop for calendar tasks
-    document.querySelectorAll('.calendar-task').forEach(task => {
-        task.addEventListener('dragstart', function(e) {
-            e.dataTransfer.setData('text/plain', this.dataset.task);
-        });
-    });
+        handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            document.querySelectorAll('.dragover').forEach(el => el.classList.remove('dragover'));
+        },
 
-    document.querySelectorAll('.calendar-day').forEach(day => {
-        day.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            this.classList.add('dragover');
-        });
-        day.addEventListener('dragleave', function() {
-            this.classList.remove('dragover');
-        });
-        day.addEventListener('drop', function(e) {
-            e.preventDefault();
-            this.classList.remove('dragover');
-            const taskName = e.dataTransfer.getData('text/plain');
-            this.innerHTML += `<div class="calendar-task">${taskName}</div>`;
-            const log = document.getElementById('calendar-log');
-            log.textContent = `Scheduled "${taskName}" for ${this.dataset.day}`;
-        });
-    });
+        handleDrop(e) {
+            if (e.target.matches('.calendar-day')) {
+                e.preventDefault();
+                e.target.classList.remove('dragover');
+                const data = e.dataTransfer.getData('text/plain');
+                console.log(`Dropped: ${data}`);
+                NotificationManager.show(`Scheduled "${data}" for ${e.target.dataset.day}`, 'success');
+            }
+        }
+    };
 
-    // Sample Management logic
-    const samples = [
-        { id: 'SMP001', name: 'Red Dress', status: 'Checked In', location: 'Shelf A1', barcode: '1234567890' },
-        { id: 'SMP002', name: 'Blue Jeans', status: 'Checked Out', location: 'Studio', barcode: '0987654321' },
-        { id: 'SMP003', name: 'Green Shirt', status: 'Checked In', location: 'Shelf B2', barcode: '1122334455' }
-    ];
+    // Initialize core systems
+    DragDropManager.init();
+    NavigationManager.init();
+    NotificationManager.show('Welcome to the Content Management Tool!', 'success');
 
-    const locations = [
-        { name: 'Building 1', rooms: [
-            { name: 'Room A', shelves: ['Shelf A1', 'Shelf A2'] },
-            { name: 'Room B', shelves: ['Shelf B1', 'Shelf B2'] }
-        ]},
-        { name: 'Studio', rooms: [] }
-    ];
+    // Role selection logic (optimized)
+    const RoleManager = {
+        roles: {
+            "studio-manager": "Configure workflows and manage production.",
+            "planning-team": "Schedule sessions and monitor progress.",
+            "sample-manager": "Manage samples and track their status.",
+            "stylist": "Coordinate styling and manage creative briefs.",
+            "photography-team": "Execute shoots and organize assets.",
+            "copywriter": "Create and optimize content.",
+            "art-director": "Review and approve creative assets.",
+            "post-production-vendor": "Handle editing and asset delivery."
+        },
 
-    // Bulk actions for Sample Management
-    function renderBulkActions() {
-        const list = document.getElementById('sample-list');
-        if (!list) return;
-        let bulkBar = document.getElementById('bulk-bar');
-        if (bulkBar) bulkBar.remove();
+        init() {
+            const roleSelect = Utils.getElement('role-select');
+            const roleInfo = Utils.getElement('role-info');
+            
+            if (roleSelect && roleInfo) {
+                roleSelect.addEventListener('change', (e) => {
+                    const selected = e.target.value;
+                    roleInfo.textContent = this.roles[selected] || "";
+                });
+            }
+        }
+    };
 
-        bulkBar = document.createElement('div');
-        bulkBar.id = 'bulk-bar';
-        bulkBar.style.display = 'flex';
-        bulkBar.style.gap = '12px';
-        bulkBar.style.marginBottom = '18px';
+    RoleManager.init();
 
-        bulkBar.innerHTML = `
-            <button id="bulk-checkin" class="nav-btn">Bulk Check In</button>
-            <button id="bulk-checkout" class="nav-btn">Bulk Check Out</button>
-            <button id="bulk-move" class="nav-btn">Bulk Move</button>
-            <span style="margin-left:auto;color:#888;">Select samples below for bulk actions</span>
-        `;
-        list.parentNode.insertBefore(bulkBar, list);
+    // Sample Management System (optimized)
+    const SampleManager = {
+        samples: [
+            { id: 'SMP001', name: 'Red Dress', status: 'Checked In', location: 'Shelf A1', barcode: '1234567890' },
+            { id: 'SMP002', name: 'Blue Jeans', status: 'Checked Out', location: 'Studio', barcode: '0987654321' },
+            { id: 'SMP003', name: 'Green Shirt', status: 'Checked In', location: 'Shelf B2', barcode: '1122334455' }
+        ],
 
-        document.getElementById('bulk-checkin').onclick = () => {
-            document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                const idx = parseInt(cb.dataset.idx);
-                samples[idx].status = 'Checked In';
-                samples[idx].location = 'Shelf A1';
-            });
-            renderSamples(document.getElementById('sample-search').value);
-        };
-        document.getElementById('bulk-checkout').onclick = () => {
-            document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                const idx = parseInt(cb.dataset.idx);
-                samples[idx].status = 'Checked Out';
-                samples[idx].location = 'Studio';
-            });
-            renderSamples(document.getElementById('sample-search').value);
-        };
-        document.getElementById('bulk-move').onclick = () => {
-            const selector = document.createElement('select');
-            selector.innerHTML = locations.map(loc =>
+        locations: [
+            { name: 'Building 1', rooms: [
+                { name: 'Room A', shelves: ['Shelf A1', 'Shelf A2'] },
+                { name: 'Room B', shelves: ['Shelf B1', 'Shelf B2'] }
+            ]},
+            { name: 'Studio', rooms: [] }
+        ],
+
+        currentFilter: '',
+
+        init() {
+            // Event delegation for sample actions
+            const sampleList = Utils.getElement('sample-list');
+            if (sampleList) {
+                Utils.delegateEvent(sampleList.parentNode, '.checkin', 'click', this.handleCheckIn.bind(this));
+                Utils.delegateEvent(sampleList.parentNode, '.checkout', 'click', this.handleCheckOut.bind(this));
+                Utils.delegateEvent(sampleList.parentNode, '.move', 'click', this.handleMove.bind(this));
+                Utils.delegateEvent(sampleList.parentNode, '[data-action="ai-sample-enhance"]', 'click', this.handleAIEnhance.bind(this));
+            }
+
+            // Search functionality with debouncing
+            const sampleSearch = Utils.getElement('sample-search');
+            if (sampleSearch) {
+                sampleSearch.addEventListener('input', Utils.debounce((e) => {
+                    this.currentFilter = e.target.value;
+                    this.render();
+                }, 300));
+            }
+
+            // Mock scan functionality
+            const scanBtn = Utils.getElement('scan-btn');
+            if (scanBtn) {
+                scanBtn.addEventListener('click', this.mockScan.bind(this));
+            }
+
+            NavigationManager.registerPageRenderer('samples', () => this.render());
+        },
+
+        handleCheckIn(e) {
+            const idx = this.getSampleIndex(e.target);
+            if (idx >= 0) {
+                this.samples[idx].status = 'Checked In';
+                this.samples[idx].location = 'Shelf A1';
+                this.render();
+                NotificationManager.show('Sample checked in successfully', 'success');
+            }
+        },
+
+        handleCheckOut(e) {
+            const idx = this.getSampleIndex(e.target);
+            if (idx >= 0) {
+                this.samples[idx].status = 'Checked Out';
+                this.samples[idx].location = 'Studio';
+                this.render();
+                NotificationManager.show('Sample checked out successfully', 'success');
+            }
+        },
+
+        handleMove(e) {
+            const idx = this.getSampleIndex(e.target);
+            if (idx >= 0) {
+                this.showLocationSelector(idx, e.target);
+            }
+        },
+
+        handleAIEnhance(e) {
+            const idx = this.getSampleIndex(e.target);
+            if (idx >= 0) {
+                showAISampleEnhanceModal(this.samples[idx]);
+            }
+        },
+
+        getSampleIndex(element) {
+            const sampleItem = element.closest('.sample-item');
+            const checkbox = sampleItem?.querySelector('.sample-checkbox');
+            return checkbox ? parseInt(checkbox.dataset.idx) : -1;
+        },
+
+        showLocationSelector(idx, element) {
+            const selector = Utils.createElement('select');
+            selector.innerHTML = this.locations.map(loc =>
                 `<optgroup label="${loc.name}">` +
                 loc.rooms.map(room =>
                     `<optgroup label="${room.name}">` +
@@ -168,39 +396,57 @@ document.addEventListener('DOMContentLoaded', () => {
                 ).join('') +
                 `</optgroup>`
             ).join('');
-            selector.onchange = () => {
-                document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                    const idx = parseInt(cb.dataset.idx);
-                    samples[idx].location = selector.value;
-                });
-                renderSamples(document.getElementById('sample-search').value);
-            };
-            bulkBar.appendChild(selector);
-        };
-    }
+            
+            selector.addEventListener('change', () => {
+                this.samples[idx].location = selector.value;
+                this.render();
+                NotificationManager.show('Sample moved successfully', 'success');
+            });
+            
+            element.closest('.sample-actions').appendChild(selector);
+        },
 
-    function renderSamples(filter = '') {
-        const list = document.getElementById('sample-list');
-        if (!list) return;
-        let foundBarcodes = new Set();
-        list.innerHTML = '';
-        samples
-            .map((sample, idx) => ({ sample, idx }))
-            .filter(({ sample }) =>
-                sample.name.toLowerCase().includes(filter.toLowerCase()) ||
-                sample.id.toLowerCase().includes(filter.toLowerCase()) ||
-                sample.barcode.includes(filter)
-            )
-            .forEach(({ sample, idx }) => {
-                // Duplicate barcode alert
+        mockScan() {
+            const codes = this.samples.map(s => s.barcode);
+            const randomCode = codes[Math.floor(Math.random() * codes.length)];
+            const sampleSearch = Utils.getElement('sample-search');
+            if (sampleSearch) {
+                sampleSearch.value = randomCode;
+                this.currentFilter = randomCode;
+                this.render();
+                NotificationManager.show(`Scanned barcode: ${randomCode}`, 'info');
+            }
+        },
+
+        getFilteredSamples() {
+            if (!this.currentFilter) return this.samples.map((sample, idx) => ({ sample, idx }));
+            
+            const filter = this.currentFilter.toLowerCase();
+            return this.samples
+                .map((sample, idx) => ({ sample, idx }))
+                .filter(({ sample }) =>
+                    sample.name.toLowerCase().includes(filter) ||
+                    sample.id.toLowerCase().includes(filter) ||
+                    sample.barcode.includes(filter)
+                );
+        },
+
+        render() {
+            const sampleList = Utils.getElement('sample-list');
+            if (!sampleList) return;
+
+            const filteredSamples = this.getFilteredSamples();
+            const foundBarcodes = new Set();
+
+            // Create sample elements
+            const sampleElements = filteredSamples.map(({ sample, idx }) => {
+                // Check for duplicate barcodes
                 if (foundBarcodes.has(sample.barcode)) {
-                    showNotification(`Duplicate barcode detected: ${sample.barcode}`);
+                    NotificationManager.show(`Duplicate barcode detected: ${sample.barcode}`, 'error');
                 }
                 foundBarcodes.add(sample.barcode);
 
-                const item = document.createElement('div');
-                item.className = 'sample-item';
-                item.innerHTML = `
+                const item = Utils.createElement('div', 'sample-item', `
                     <input type="checkbox" class="sample-checkbox" data-idx="${idx}" style="margin-right:16px;">
                     <div class="sample-info">
                         <strong>${sample.name}</strong>
@@ -215,324 +461,376 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="move">Move</button>
                         <button class="nav-btn" data-action="ai-sample-enhance">AI Enhance</button>
                     </div>
-                `;
-                // Button logic
-                item.querySelector('.checkin').addEventListener('click', () => {
-                    sample.status = 'Checked In';
-                    sample.location = 'Shelf A1';
-                    renderSamples(document.getElementById('sample-search').value);
-                });
-                item.querySelector('.checkout').addEventListener('click', () => {
-                    sample.status = 'Checked Out';
-                    sample.location = 'Studio';
-                    renderSamples(document.getElementById('sample-search').value);
-                });
-                item.querySelector('.move').addEventListener('click', () => {
-                    // Show location hierarchy selector
-                    const selector = document.createElement('select');
-                    selector.innerHTML = locations.map(loc =>
-                        `<optgroup label="${loc.name}">` +
-                        loc.rooms.map(room =>
-                            `<optgroup label="${room.name}">` +
-                            room.shelves.map(shelf =>
-                                `<option value="${shelf}">${shelf}</option>`
-                            ).join('') +
-                            `</optgroup>`
-                        ).join('') +
-                        `</optgroup>`
-                    ).join('');
-                    selector.addEventListener('change', () => {
-                        sample.location = selector.value;
-                        renderSamples(document.getElementById('sample-search').value);
-                    });
-                    item.querySelector('.sample-actions').appendChild(selector);
-                });
-                item.querySelector('[data-action="ai-sample-enhance"]').onclick = () => showAISampleEnhanceModal(sample);
-                list.appendChild(item);
+                `);
+                return item;
             });
 
-        // Alert for missing samples
-        if (samples.length === 0) {
-            showNotification('No samples found!');
+            // Batch update DOM
+            Utils.batchUpdate(sampleList, sampleElements);
+
+            // Show alert for no samples
+            if (this.samples.length === 0) {
+                NotificationManager.show('No samples found!', 'info');
+            }
+
+            this.renderBulkActions();
+        },
+
+        renderBulkActions() {
+            const list = Utils.getElement('sample-list');
+            if (!list) return;
+            
+            // Remove any existing bulk bar
+            const existingBulkBar = document.querySelector('#bulk-bar');
+            if (existingBulkBar) existingBulkBar.remove();
+
+            const bulkBar = Utils.createElement('div', '', `
+                <div style="display:flex;gap:12px;margin-bottom:18px;">
+                    <button id="bulk-checkin" class="nav-btn">Bulk Check In</button>
+                    <button id="bulk-checkout" class="nav-btn">Bulk Check Out</button>
+                    <button id="bulk-move" class="nav-btn">Bulk Move</button>
+                    <span style="margin-left:auto;color:#888;">Select samples below for bulk actions</span>
+                </div>
+            `);
+            bulkBar.id = 'bulk-bar';
+
+            // Event listeners for bulk actions
+            Utils.delegateEvent(bulkBar, '#bulk-checkin', 'click', this.bulkCheckIn.bind(this));
+            Utils.delegateEvent(bulkBar, '#bulk-checkout', 'click', this.bulkCheckOut.bind(this));
+            Utils.delegateEvent(bulkBar, '#bulk-move', 'click', this.bulkMove.bind(this));
+
+            list.parentNode.insertBefore(bulkBar, list);
+        },
+
+        bulkCheckIn() {
+            this.bulkAction((sample) => {
+                sample.status = 'Checked In';
+                sample.location = 'Shelf A1';
+            });
+        },
+
+        bulkCheckOut() {
+            this.bulkAction((sample) => {
+                sample.status = 'Checked Out';
+                sample.location = 'Studio';
+            });
+        },
+
+        bulkMove() {
+            const selector = Utils.createElement('select');
+            selector.innerHTML = this.locations.map(loc =>
+                `<optgroup label="${loc.name}">` +
+                loc.rooms.map(room =>
+                    `<optgroup label="${room.name}">` +
+                    room.shelves.map(shelf =>
+                        `<option value="${shelf}">${shelf}</option>`
+                    ).join('') +
+                    `</optgroup>`
+                ).join('') +
+                `</optgroup>`
+            ).join('');
+            
+            selector.addEventListener('change', () => {
+                this.bulkAction((sample) => {
+                    sample.location = selector.value;
+                });
+            });
+            
+            const bulkBar = Utils.getElement('bulk-bar');
+            if (bulkBar) bulkBar.appendChild(selector);
+        },
+
+        bulkAction(action) {
+            const checkedBoxes = document.querySelectorAll('.sample-checkbox:checked');
+            checkedBoxes.forEach(cb => {
+                const idx = parseInt(cb.dataset.idx);
+                action(this.samples[idx]);
+            });
+            this.render();
+            NotificationManager.show(`Bulk action applied to ${checkedBoxes.length} samples`, 'success');
         }
+    };
 
-        // Render bulk actions bar
-        renderBulkActions();
-    }
+    SampleManager.init();
 
-    // Initial render when switching to Sample Management
-    document.querySelector('[data-page="samples"]').addEventListener('click', () => {
-        renderSamples();
-    });
+    // Calendar Management System (optimized)
+    const CalendarManager = {
+        tasks: [
+            { id: 1, name: "Shoot Product A", day: "Monday", type: "Photography", status: "Scheduled", assigned: "Alice", description: "Studio shoot for Product A", deadline: "2025-08-06", color: "#0078ff", recurring: false },
+            { id: 2, name: "Edit Product B", day: "Tuesday", type: "Editing", status: "Scheduled", assigned: "Bob", description: "Edit images for Product B", deadline: "2025-08-07", color: "#22c55e", recurring: true },
+            { id: 3, name: "Review Product C", day: "Wednesday", type: "Review", status: "Scheduled", assigned: "Carol", description: "Review assets for Product C", deadline: "2025-08-08", color: "#f59e42", recurring: false }
+        ],
 
-    // Search/filter logic
-    const sampleSearch = document.getElementById('sample-search');
-    if (sampleSearch) {
-        sampleSearch.addEventListener('input', (e) => {
-            renderSamples(e.target.value);
-        });
-    }
+        teamMembers: ["Alice", "Bob", "Carol", "David"],
+        taskTypes: ["Photography", "Editing", "Review", "Copywriting"],
+        calendarDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        currentView: "week",
+        currentFilters: {},
 
-    // Mock scan logic
-    const scanBtn = document.getElementById('scan-btn');
-    if (scanBtn) {
-        scanBtn.addEventListener('click', () => {
-            // Simulate scanning a barcode
-            const codes = samples.map(s => s.barcode);
-            const randomCode = codes[Math.floor(Math.random() * codes.length)];
-            sampleSearch.value = randomCode;
-            renderSamples(randomCode);
-            showNotification(`Scanned barcode: ${randomCode}`);
-        });
-    }
+        init() {
+            NavigationManager.registerPageRenderer('calendar', () => this.render());
+        },
 
-    // --- Advanced Planning Calendar Features ---
+        render(view = this.currentView) {
+            const container = document.querySelector('.calendar-container');
+            if (!container) return;
+            
+            this.currentView = view;
+            
+            // Create elements efficiently
+            const elements = [
+                this.createViewSelector(),
+                this.createFilterBar(),
+                this.createCalendarGrid()
+            ];
+            
+            Utils.batchUpdate(container, elements);
+            this.attachEventListeners(container);
+        },
 
-    // Calendar data model
-    let calendarTasks = [
-        { id: 1, name: "Shoot Product A", day: "Monday", type: "Photography", status: "Scheduled", assigned: "Alice", description: "Studio shoot for Product A", deadline: "2025-08-06", color: "#0078ff", recurring: false },
-        { id: 2, name: "Edit Product B", day: "Tuesday", type: "Editing", status: "Scheduled", assigned: "Bob", description: "Edit images for Product B", deadline: "2025-08-07", color: "#22c55e", recurring: true },
-        { id: 3, name: "Review Product C", day: "Wednesday", type: "Review", status: "Scheduled", assigned: "Carol", description: "Review assets for Product C", deadline: "2025-08-08", color: "#f59e42", recurring: false }
-    ];
+        createViewSelector() {
+            const viewSelector = Utils.createElement('select', '', `
+                <option value="day" ${this.currentView === 'day' ? 'selected' : ''}>Day</option>
+                <option value="week" ${this.currentView === 'week' ? 'selected' : ''}>Week</option>
+                <option value="month" ${this.currentView === 'month' ? 'selected' : ''}>Month</option>
+            `);
+            return viewSelector;
+        },
 
-    const teamMembers = ["Alice", "Bob", "Carol", "David"];
-    const taskTypes = ["Photography", "Editing", "Review", "Copywriting"];
-    const calendarDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+        createFilterBar() {
+            const filterBar = Utils.createElement('div', '', `
+                <div style="display:flex;gap:12px;margin:16px 0;">
+                    <select id="filter-type">
+                        <option value="">All Types</option>
+                        ${this.taskTypes.map(t => `<option value="${t}">${t}</option>`).join('')}
+                    </select>
+                    <select id="filter-member">
+                        <option value="">All Members</option>
+                        ${this.teamMembers.map(m => `<option value="${m}">${m}</option>`).join('')}
+                    </select>
+                    <select id="filter-status">
+                        <option value="">All Status</option>
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Overdue">Overdue</option>
+                    </select>
+                </div>
+            `);
+            return filterBar;
+        },
 
-    // Render calendar with advanced features
-    function renderCalendar(view = "week") {
-        const container = document.querySelector('.calendar-container');
-        if (!container) return;
-        container.innerHTML = '';
+        createCalendarGrid() {
+            const grid = Utils.createElement('div', 'calendar-grid');
+            grid.style.cssText = `
+                display: grid;
+                grid-template-columns: repeat(${this.calendarDays.length}, 1fr);
+                gap: 16px;
+            `;
 
-        // View selector
-        const viewSelector = document.createElement('select');
-        viewSelector.innerHTML = `
-            <option value="day">Day</option>
-            <option value="week" selected>Week</option>
-            <option value="month">Month</option>
-        `;
-        viewSelector.onchange = () => renderCalendar(viewSelector.value);
-        container.appendChild(viewSelector);
+            const dayElements = this.calendarDays.map(day => this.createDayColumn(day));
+            Utils.batchUpdate(grid, dayElements);
+            
+            return grid;
+        },
 
-        // Filter bar
-        const filterBar = document.createElement('div');
-        filterBar.style.display = 'flex';
-        filterBar.style.gap = '12px';
-        filterBar.style.margin = '16px 0';
-        filterBar.innerHTML = `
-            <select id="filter-type">
-                <option value="">All Types</option>
-                ${taskTypes.map(t => `<option value="${t}">${t}</option>`).join('')}
-            </select>
-            <select id="filter-member">
-                <option value="">All Members</option>
-                ${teamMembers.map(m => `<option value="${m}">${m}</option>`).join('')}
-            </select>
-            <select id="filter-status">
-                <option value="">All Status</option>
-                <option value="Scheduled">Scheduled</option>
-                <option value="Completed">Completed</option>
-                <option value="Overdue">Overdue</option>
-            </select>
-        `;
-        container.appendChild(filterBar);
-
-        // Calendar grid
-        const grid = document.createElement('div');
-        grid.className = 'calendar-grid';
-        grid.style.display = 'grid';
-        grid.style.gridTemplateColumns = `repeat(${calendarDays.length}, 1fr)`;
-        grid.style.gap = '16px';
-
-        calendarDays.forEach(day => {
-            const dayCol = document.createElement('div');
-            dayCol.className = 'calendar-day';
+        createDayColumn(day) {
+            const dayCol = Utils.createElement('div', 'calendar-day', `<strong>${day}</strong>`);
             dayCol.dataset.day = day;
-            dayCol.innerHTML = `<strong>${day}</strong>`;
-            dayCol.style.minHeight = '120px';
-            dayCol.style.background = "#f0f4f8";
-            dayCol.style.borderRadius = "8px";
-            dayCol.style.padding = "8px";
+            dayCol.style.cssText = `
+                min-height: 120px;
+                background: #f0f4f8;
+                border-radius: 8px;
+                padding: 8px;
+            `;
 
-            // Drag-and-drop support
-            dayCol.addEventListener('dragover', e => e.preventDefault());
-            dayCol.addEventListener('drop', function(e) {
-                e.preventDefault();
-                const taskId = e.dataTransfer.getData('text/plain');
-                const task = calendarTasks.find(t => t.id == taskId);
-                if (task) {
-                    task.day = day;
-                    renderCalendar(view);
-                    showNotification(`Moved "${task.name}" to ${day}`);
+            // Add tasks for this day
+            const dayTasks = this.getFilteredTasks().filter(t => t.day === day);
+            const taskElements = dayTasks.map(task => this.createTaskElement(task));
+            taskElements.forEach(taskEl => dayCol.appendChild(taskEl));
+
+            return dayCol;
+        },
+
+        createTaskElement(task) {
+            const taskDiv = Utils.createElement('div', 'calendar-task', `
+                <span>${task.name}</span>
+                <span style="float:right;">${task.assigned}</span>
+                <button class="nav-btn task-enhance-btn" data-task-id="${task.id}" style="margin-left:8px;">AI Enhance</button>
+            `);
+            
+            taskDiv.draggable = true;
+            taskDiv.dataset.taskId = task.id;
+            taskDiv.style.cssText = `
+                background: ${task.color};
+                margin: 8px 0;
+                padding: 8px;
+                border-radius: 6px;
+                cursor: move;
+            `;
+
+            return taskDiv;
+        },
+
+        attachEventListeners(container) {
+            // View selector
+            Utils.delegateEvent(container, 'select', 'change', (e) => {
+                if (e.target.closest('.calendar-container') && e.target.tagName === 'SELECT' && !e.target.id) {
+                    this.render(e.target.value);
                 }
             });
 
-            // Render tasks for this day
-            calendarTasks.filter(t => t.day === day).forEach(task => {
-                const taskDiv = document.createElement('div');
-                taskDiv.className = 'calendar-task';
-                taskDiv.draggable = true;
-                taskDiv.style.background = task.color;
-                taskDiv.style.margin = "8px 0";
-                taskDiv.style.padding = "8px";
-                taskDiv.style.borderRadius = "6px";
-                taskDiv.innerHTML = `
-                    <span>${task.name}</span>
-                    <span style="float:right;">${task.assigned}</span>
-                `;
-                taskDiv.addEventListener('dragstart', e => {
-                    e.dataTransfer.setData('text/plain', task.id);
-                });
-                // Click to edit/view details
-                taskDiv.addEventListener('click', () => showTaskModal(task));
-                taskDiv.innerHTML += `<button class="nav-btn" data-action="ai-task-enhance" style="margin-left:8px;">AI Enhance</button>`;
-                taskDiv.querySelector('[data-action="ai-task-enhance"]').onclick = () => showAITaskEnhanceModal(task);
-                dayCol.appendChild(taskDiv);
+            // Filter events
+            Utils.delegateEvent(container, '[id^="filter-"]', 'change', this.handleFilterChange.bind(this));
+
+            // Task events
+            Utils.delegateEvent(container, '.calendar-task', 'click', this.handleTaskClick.bind(this));
+            Utils.delegateEvent(container, '.task-enhance-btn', 'click', this.handleTaskEnhance.bind(this));
+
+            // Drag and drop (handled by global DragDropManager, but we can add specific logic)
+            Utils.delegateEvent(container, '.calendar-day', 'drop', this.handleTaskDrop.bind(this));
+        },
+
+        handleFilterChange(e) {
+            const filterId = e.target.id.replace('filter-', '');
+            this.currentFilters[filterId] = e.target.value;
+            this.render();
+        },
+
+        handleTaskClick(e) {
+            if (e.target.classList.contains('task-enhance-btn')) return; // Let the enhance handler deal with it
+            
+            const taskId = parseInt(e.target.closest('.calendar-task').dataset.taskId);
+            const task = this.tasks.find(t => t.id === taskId);
+            if (task) {
+                this.showTaskModal(task);
+            }
+        },
+
+        handleTaskEnhance(e) {
+            e.stopPropagation();
+            const taskId = parseInt(e.target.dataset.taskId);
+            const task = this.tasks.find(t => t.id === taskId);
+            if (task) {
+                showAITaskEnhanceModal(task);
+            }
+        },
+
+        handleTaskDrop(e) {
+            e.preventDefault();
+            const taskId = e.dataTransfer.getData('text/plain');
+            const task = this.tasks.find(t => t.id == taskId);
+            const day = e.target.closest('.calendar-day').dataset.day;
+            
+            if (task && day) {
+                task.day = day;
+                this.render();
+                NotificationManager.show(`Moved "${task.name}" to ${day}`, 'success');
+            }
+        },
+
+        getFilteredTasks() {
+            let filtered = this.tasks;
+            
+            if (this.currentFilters.type) {
+                filtered = filtered.filter(t => t.type === this.currentFilters.type);
+            }
+            if (this.currentFilters.member) {
+                filtered = filtered.filter(t => t.assigned === this.currentFilters.member);
+            }
+            if (this.currentFilters.status) {
+                filtered = filtered.filter(t => t.status === this.currentFilters.status);
+            }
+            
+            return filtered;
+        },
+
+        showTaskModal(task) {
+            const modal = ModalUtils.create('task-modal', 'Edit Task', `
+                <label>Name: <input id="modal-name" value="${task.name}" /></label><br>
+                <label>Description: <input id="modal-desc" value="${task.description}" /></label><br>
+                <label>Assigned: 
+                    <select id="modal-assigned">
+                        ${this.teamMembers.map(m => `<option value="${m}" ${task.assigned === m ? 'selected' : ''}>${m}</option>`).join('')}
+                    </select>
+                </label><br>
+                <label>Type: 
+                    <select id="modal-type">
+                        ${this.taskTypes.map(t => `<option value="${t}" ${task.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+                    </select>
+                </label><br>
+                <label>Status: 
+                    <select id="modal-status">
+                        <option value="Scheduled" ${task.status === "Scheduled" ? "selected" : ""}>Scheduled</option>
+                        <option value="Completed" ${task.status === "Completed" ? "selected" : ""}>Completed</option>
+                        <option value="Overdue" ${task.status === "Overdue" ? "selected" : ""}>Overdue</option>
+                    </select>
+                </label><br>
+                <label>Deadline: <input id="modal-deadline" type="date" value="${task.deadline}" /></label><br>
+                <label>Recurring: <input id="modal-recurring" type="checkbox" ${task.recurring ? "checked" : ""} /></label><br>
+            `, {
+                customActions: '<button id="modal-save" class="nav-btn primary">Save</button>'
             });
 
-            grid.appendChild(dayCol);
-        });
-
-        container.appendChild(grid);
-
-        // Filtering logic
-        filterBar.querySelectorAll('select').forEach(sel => {
-            sel.onchange = () => {
-                let filtered = calendarTasks;
-                const type = filterBar.querySelector('#filter-type').value;
-                const member = filterBar.querySelector('#filter-member').value;
-                const status = filterBar.querySelector('#filter-status').value;
-                if (type) filtered = filtered.filter(t => t.type === type);
-                if (member) filtered = filtered.filter(t => t.assigned === member);
-                if (status) filtered = filtered.filter(t => t.status === status);
-                // Re-render only filtered tasks
-                calendarDays.forEach(day => {
-                    const dayCol = grid.querySelector(`[data-day="${day}"]`);
-                    if (dayCol) {
-                        // Remove old tasks
-                        Array.from(dayCol.querySelectorAll('.calendar-task')).forEach(el => el.remove());
-                        // Add filtered tasks
-                        filtered.filter(t => t.day === day).forEach(task => {
-                            const taskDiv = document.createElement('div');
-                            taskDiv.className = 'calendar-task';
-                            taskDiv.draggable = true;
-                            taskDiv.style.background = task.color;
-                            taskDiv.style.margin = "8px 0";
-                            taskDiv.style.padding = "8px";
-                            taskDiv.style.borderRadius = "6px";
-                            taskDiv.innerHTML = `
-                                <span>${task.name}</span>
-                                <span style="float:right;">${task.assigned}</span>
-                            `;
-                            taskDiv.addEventListener('dragstart', e => {
-                                e.dataTransfer.setData('text/plain', task.id);
-                            });
-                            taskDiv.addEventListener('click', () => showTaskModal(task));
-                            taskDiv.innerHTML += `<button class="nav-btn" data-action="ai-task-enhance" style="margin-left:8px;">AI Enhance</button>`;
-                            taskDiv.querySelector('[data-action="ai-task-enhance"]').onclick = () => showAITaskEnhanceModal(task);
-                            dayCol.appendChild(taskDiv);
-                        });
-                    }
-                });
+            Utils.getElement('modal-save').onclick = () => {
+                task.name = Utils.getElement('modal-name').value;
+                task.description = Utils.getElement('modal-desc').value;
+                task.assigned = Utils.getElement('modal-assigned').value;
+                task.type = Utils.getElement('modal-type').value;
+                task.status = Utils.getElement('modal-status').value;
+                task.deadline = Utils.getElement('modal-deadline').value;
+                task.recurring = Utils.getElement('modal-recurring').checked;
+                this.render();
+                ModalUtils.destroy('task-modal');
+                NotificationManager.show('Task updated!', 'success');
             };
-        });
-    }
+        }
+    };
 
-    // Modal for task details/editing
-    function showTaskModal(task) {
-        let modal = document.getElementById('task-modal');
-        if (modal) modal.remove();
-        modal = document.createElement('div');
-        modal.id = 'task-modal';
-        modal.style.position = 'fixed';
-        modal.style.top = '50%';
-        modal.style.left = '50%';
-        modal.style.transform = 'translate(-50%, -50%)';
-        modal.style.background = '#fff';
-        modal.style.padding = '32px';
-        modal.style.borderRadius = '12px';
-        modal.style.boxShadow = '0 8px 32px rgba(0,0,0,0.15)';
-        modal.style.zIndex = '9999';
-        modal.innerHTML = `
-            <h3>Edit Task</h3>
-            <label>Name: <input id="modal-name" value="${task.name}" /></label><br>
-            <label>Description: <input id="modal-desc" value="${task.description}" /></label><br>
-            <label>Assigned: 
-                <select id="modal-assigned">
-                    ${teamMembers.map(m => `<option value="${m}" ${task.assigned === m ? 'selected' : ''}>${m}</option>`).join('')}
-                </select>
-            </label><br>
-            <label>Type: 
-                <select id="modal-type">
-                    ${taskTypes.map(t => `<option value="${t}" ${task.type === t ? 'selected' : ''}>${t}</option>`).join('')}
-                </select>
-            </label><br>
-            <label>Status: 
-                <select id="modal-status">
-                    <option value="Scheduled" ${task.status === "Scheduled" ? "selected" : ""}>Scheduled</option>
-                    <option value="Completed" ${task.status === "Completed" ? "selected" : ""}>Completed</option>
-                    <option value="Overdue" ${task.status === "Overdue" ? "selected" : ""}>Overdue</option>
-                </select>
-            </label><br>
-            <label>Deadline: <input id="modal-deadline" type="date" value="${task.deadline}" /></label><br>
-            <label>Recurring: <input id="modal-recurring" type="checkbox" ${task.recurring ? "checked" : ""} /></label><br>
-            <button id="modal-save" class="nav-btn primary">Save</button>
-            <button id="modal-cancel" class="nav-btn">Cancel</button>
-        `;
-        document.body.appendChild(modal);
+    CalendarManager.init();
 
-        document.getElementById('modal-save').onclick = () => {
-            task.name = document.getElementById('modal-name').value;
-            task.description = document.getElementById('modal-desc').value;
-            task.assigned = document.getElementById('modal-assigned').value;
-            task.type = document.getElementById('modal-type').value;
-            task.status = document.getElementById('modal-status').value;
-            task.deadline = document.getElementById('modal-deadline').value;
-            task.recurring = document.getElementById('modal-recurring').checked;
-            renderCalendar();
-            modal.remove();
-            showNotification('Task updated!');
-        };
-        document.getElementById('modal-cancel').onclick = () => modal.remove();
-    }
+    // Make calendarTasks available globally for compatibility
+    window.calendarTasks = CalendarManager.tasks;
 
-    // Show calendar when switching to calendar page
-    document.querySelector('[data-page="calendar"]').addEventListener('click', () => {
-        renderCalendar();
-    });
+    // Overview Manager (optimized)
+    const OverviewManager = {
+        init() {
+            NavigationManager.registerPageRenderer('overview', () => this.render());
+        },
 
-    function renderOverview() {
-        // Total tasks
-        const totalTasks = calendarTasks.length;
-        document.getElementById('overview-total-tasks').textContent = totalTasks;
+        render() {
+            // Total tasks
+            const totalTasks = CalendarManager.tasks.length;
+            const totalTasksEl = Utils.getElement('overview-total-tasks');
+            if (totalTasksEl) totalTasksEl.textContent = totalTasks;
 
-        // Active samples
-        const activeSamples = samples.filter(s => s.status === 'Checked In').length;
-        document.getElementById('overview-active-samples').textContent = activeSamples;
+            // Active samples  
+            const activeSamples = SampleManager.samples.filter(s => s.status === 'Checked In').length;
+            const activeSamplesEl = Utils.getElement('overview-active-samples');
+            if (activeSamplesEl) activeSamplesEl.textContent = activeSamples;
 
-        // Upcoming deadlines (next 3)
-        const upcoming = calendarTasks
-            .filter(t => new Date(t.deadline) >= new Date())
-            .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
-            .slice(0, 3);
-        const deadlinesList = document.getElementById('overview-upcoming-deadlines');
-        deadlinesList.innerHTML = upcoming.length
-            ? upcoming.map(t => `<li>${t.name} - ${t.deadline}</li>`).join('')
-            : '<li>No upcoming deadlines</li>';
+            // Upcoming deadlines (next 3)
+            const upcoming = CalendarManager.tasks
+                .filter(t => new Date(t.deadline) >= new Date())
+                .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
+                .slice(0, 3);
+            const deadlinesList = Utils.getElement('overview-upcoming-deadlines');
+            if (deadlinesList) {
+                deadlinesList.innerHTML = upcoming.length
+                    ? upcoming.map(t => `<li>${t.name} - ${t.deadline}</li>`).join('')
+                    : '<li>No upcoming deadlines</li>';
+            }
 
-        // Team utilization
-        const utilization = teamMembers.map(member => {
-            const count = calendarTasks.filter(t => t.assigned === member).length;
-            return `<li>${member}: ${count} task${count !== 1 ? 's' : ''}</li>`;
-        }).join('');
-        document.getElementById('overview-team-utilization').innerHTML = utilization;
-    }
+            // Team utilization
+            const utilization = CalendarManager.teamMembers.map(member => {
+                const count = CalendarManager.tasks.filter(t => t.assigned === member).length;
+                return `<li>${member}: ${count} task${count !== 1 ? 's' : ''}</li>`;
+            }).join('');
+            const utilizationEl = Utils.getElement('overview-team-utilization');
+            if (utilizationEl) utilizationEl.innerHTML = utilization;
+        }
+    };
 
-    // Render overview when switching to Overview tab
-    document.querySelector('[data-page="overview"]').addEventListener('click', () => {
-        renderOverview();
-    });
+    OverviewManager.init();
 
     // --- Workflow Designer ---
 
@@ -2044,52 +2342,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        // Bulk sample check in
-        document.getElementById('bulk-checkin-samples').onclick = () => {
-            document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                const idx = parseInt(cb.dataset.idx);
-                samples[idx].status = 'Checked In';
-                samples[idx].location = 'Shelf A1';
-            });
-            renderSamples(document.getElementById('sample-search').value);
-            showNotification('Selected samples checked in!');
-        };
-
-        // Bulk sample check out
-        document.getElementById('bulk-checkout-samples').onclick = () => {
-            document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                const idx = parseInt(cb.dataset.idx);
-                samples[idx].status = 'Checked Out';
-                samples[idx].location = 'Studio';
-            });
-            renderSamples(document.getElementById('sample-search').value);
-            showNotification('Selected samples checked out!');
-        };
-
-        // Bulk sample move
-        document.getElementById('bulk-move-samples').onclick = () => {
-            const selector = document.createElement('select');
-            selector.innerHTML = locations.map(loc =>
-                `<optgroup label="${loc.name}">` +
-                loc.rooms.map(room =>
-                    `<optgroup label="${room.name}">` +
-                    room.shelves.map(shelf =>
-                        `<option value="${shelf}">${shelf}</option>`
-                    ).join('') +
-                    `</optgroup>`
-                ).join('') +
-                `</optgroup>`
-            ).join('');
-            selector.onchange = () => {
-                document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                    const idx = parseInt(cb.dataset.idx);
-                    samples[idx].location = selector.value;
-                });
-                renderSamples(document.getElementById('sample-search').value);
-                showNotification('Selected samples moved!');
-            };
-            bulkBar.appendChild(selector);
-        };
     });
 
     // --- Debugging and Development Tools ---
