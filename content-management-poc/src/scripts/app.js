@@ -553,253 +553,284 @@ document.addEventListener('DOMContentLoaded', () => {
 
     SampleManager.init();
 
-    // --- Advanced Planning Calendar Features ---
+    // Calendar Management System (optimized)
+    const CalendarManager = {
+        tasks: [
+            { id: 1, name: "Shoot Product A", day: "Monday", type: "Photography", status: "Scheduled", assigned: "Alice", description: "Studio shoot for Product A", deadline: "2025-08-06", color: "#0078ff", recurring: false },
+            { id: 2, name: "Edit Product B", day: "Tuesday", type: "Editing", status: "Scheduled", assigned: "Bob", description: "Edit images for Product B", deadline: "2025-08-07", color: "#22c55e", recurring: true },
+            { id: 3, name: "Review Product C", day: "Wednesday", type: "Review", status: "Scheduled", assigned: "Carol", description: "Review assets for Product C", deadline: "2025-08-08", color: "#f59e42", recurring: false }
+        ],
 
-    // Calendar data model
-    let calendarTasks = [
-        { id: 1, name: "Shoot Product A", day: "Monday", type: "Photography", status: "Scheduled", assigned: "Alice", description: "Studio shoot for Product A", deadline: "2025-08-06", color: "#0078ff", recurring: false },
-        { id: 2, name: "Edit Product B", day: "Tuesday", type: "Editing", status: "Scheduled", assigned: "Bob", description: "Edit images for Product B", deadline: "2025-08-07", color: "#22c55e", recurring: true },
-        { id: 3, name: "Review Product C", day: "Wednesday", type: "Review", status: "Scheduled", assigned: "Carol", description: "Review assets for Product C", deadline: "2025-08-08", color: "#f59e42", recurring: false }
-    ];
+        teamMembers: ["Alice", "Bob", "Carol", "David"],
+        taskTypes: ["Photography", "Editing", "Review", "Copywriting"],
+        calendarDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        currentView: "week",
+        currentFilters: {},
 
-    const teamMembers = ["Alice", "Bob", "Carol", "David"];
-    const taskTypes = ["Photography", "Editing", "Review", "Copywriting"];
-    const calendarDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+        init() {
+            NavigationManager.registerPageRenderer('calendar', () => this.render());
+        },
 
-    // Render calendar with advanced features
-    function renderCalendar(view = "week") {
-        const container = document.querySelector('.calendar-container');
-        if (!container) return;
-        container.innerHTML = '';
+        render(view = this.currentView) {
+            const container = document.querySelector('.calendar-container');
+            if (!container) return;
+            
+            this.currentView = view;
+            
+            // Create elements efficiently
+            const elements = [
+                this.createViewSelector(),
+                this.createFilterBar(),
+                this.createCalendarGrid()
+            ];
+            
+            Utils.batchUpdate(container, elements);
+            this.attachEventListeners(container);
+        },
 
-        // View selector
-        const viewSelector = document.createElement('select');
-        viewSelector.innerHTML = `
-            <option value="day">Day</option>
-            <option value="week" selected>Week</option>
-            <option value="month">Month</option>
-        `;
-        viewSelector.onchange = () => renderCalendar(viewSelector.value);
-        container.appendChild(viewSelector);
+        createViewSelector() {
+            const viewSelector = Utils.createElement('select', '', `
+                <option value="day" ${this.currentView === 'day' ? 'selected' : ''}>Day</option>
+                <option value="week" ${this.currentView === 'week' ? 'selected' : ''}>Week</option>
+                <option value="month" ${this.currentView === 'month' ? 'selected' : ''}>Month</option>
+            `);
+            return viewSelector;
+        },
 
-        // Filter bar
-        const filterBar = document.createElement('div');
-        filterBar.style.display = 'flex';
-        filterBar.style.gap = '12px';
-        filterBar.style.margin = '16px 0';
-        filterBar.innerHTML = `
-            <select id="filter-type">
-                <option value="">All Types</option>
-                ${taskTypes.map(t => `<option value="${t}">${t}</option>`).join('')}
-            </select>
-            <select id="filter-member">
-                <option value="">All Members</option>
-                ${teamMembers.map(m => `<option value="${m}">${m}</option>`).join('')}
-            </select>
-            <select id="filter-status">
-                <option value="">All Status</option>
-                <option value="Scheduled">Scheduled</option>
-                <option value="Completed">Completed</option>
-                <option value="Overdue">Overdue</option>
-            </select>
-        `;
-        container.appendChild(filterBar);
+        createFilterBar() {
+            const filterBar = Utils.createElement('div', '', `
+                <div style="display:flex;gap:12px;margin:16px 0;">
+                    <select id="filter-type">
+                        <option value="">All Types</option>
+                        ${this.taskTypes.map(t => `<option value="${t}">${t}</option>`).join('')}
+                    </select>
+                    <select id="filter-member">
+                        <option value="">All Members</option>
+                        ${this.teamMembers.map(m => `<option value="${m}">${m}</option>`).join('')}
+                    </select>
+                    <select id="filter-status">
+                        <option value="">All Status</option>
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Overdue">Overdue</option>
+                    </select>
+                </div>
+            `);
+            return filterBar;
+        },
 
-        // Calendar grid
-        const grid = document.createElement('div');
-        grid.className = 'calendar-grid';
-        grid.style.display = 'grid';
-        grid.style.gridTemplateColumns = `repeat(${calendarDays.length}, 1fr)`;
-        grid.style.gap = '16px';
+        createCalendarGrid() {
+            const grid = Utils.createElement('div', 'calendar-grid');
+            grid.style.cssText = `
+                display: grid;
+                grid-template-columns: repeat(${this.calendarDays.length}, 1fr);
+                gap: 16px;
+            `;
 
-        calendarDays.forEach(day => {
-            const dayCol = document.createElement('div');
-            dayCol.className = 'calendar-day';
+            const dayElements = this.calendarDays.map(day => this.createDayColumn(day));
+            Utils.batchUpdate(grid, dayElements);
+            
+            return grid;
+        },
+
+        createDayColumn(day) {
+            const dayCol = Utils.createElement('div', 'calendar-day', `<strong>${day}</strong>`);
             dayCol.dataset.day = day;
-            dayCol.innerHTML = `<strong>${day}</strong>`;
-            dayCol.style.minHeight = '120px';
-            dayCol.style.background = "#f0f4f8";
-            dayCol.style.borderRadius = "8px";
-            dayCol.style.padding = "8px";
+            dayCol.style.cssText = `
+                min-height: 120px;
+                background: #f0f4f8;
+                border-radius: 8px;
+                padding: 8px;
+            `;
 
-            // Drag-and-drop support
-            dayCol.addEventListener('dragover', e => e.preventDefault());
-            dayCol.addEventListener('drop', function(e) {
-                e.preventDefault();
-                const taskId = e.dataTransfer.getData('text/plain');
-                const task = calendarTasks.find(t => t.id == taskId);
-                if (task) {
-                    task.day = day;
-                    renderCalendar(view);
-                    showNotification(`Moved "${task.name}" to ${day}`);
+            // Add tasks for this day
+            const dayTasks = this.getFilteredTasks().filter(t => t.day === day);
+            const taskElements = dayTasks.map(task => this.createTaskElement(task));
+            taskElements.forEach(taskEl => dayCol.appendChild(taskEl));
+
+            return dayCol;
+        },
+
+        createTaskElement(task) {
+            const taskDiv = Utils.createElement('div', 'calendar-task', `
+                <span>${task.name}</span>
+                <span style="float:right;">${task.assigned}</span>
+                <button class="nav-btn task-enhance-btn" data-task-id="${task.id}" style="margin-left:8px;">AI Enhance</button>
+            `);
+            
+            taskDiv.draggable = true;
+            taskDiv.dataset.taskId = task.id;
+            taskDiv.style.cssText = `
+                background: ${task.color};
+                margin: 8px 0;
+                padding: 8px;
+                border-radius: 6px;
+                cursor: move;
+            `;
+
+            return taskDiv;
+        },
+
+        attachEventListeners(container) {
+            // View selector
+            Utils.delegateEvent(container, 'select', 'change', (e) => {
+                if (e.target.closest('.calendar-container') && e.target.tagName === 'SELECT' && !e.target.id) {
+                    this.render(e.target.value);
                 }
             });
 
-            // Render tasks for this day
-            calendarTasks.filter(t => t.day === day).forEach(task => {
-                const taskDiv = document.createElement('div');
-                taskDiv.className = 'calendar-task';
-                taskDiv.draggable = true;
-                taskDiv.style.background = task.color;
-                taskDiv.style.margin = "8px 0";
-                taskDiv.style.padding = "8px";
-                taskDiv.style.borderRadius = "6px";
-                taskDiv.innerHTML = `
-                    <span>${task.name}</span>
-                    <span style="float:right;">${task.assigned}</span>
-                `;
-                taskDiv.addEventListener('dragstart', e => {
-                    e.dataTransfer.setData('text/plain', task.id);
-                });
-                // Click to edit/view details
-                taskDiv.addEventListener('click', () => showTaskModal(task));
-                taskDiv.innerHTML += `<button class="nav-btn" data-action="ai-task-enhance" style="margin-left:8px;">AI Enhance</button>`;
-                taskDiv.querySelector('[data-action="ai-task-enhance"]').onclick = () => showAITaskEnhanceModal(task);
-                dayCol.appendChild(taskDiv);
+            // Filter events
+            Utils.delegateEvent(container, '[id^="filter-"]', 'change', this.handleFilterChange.bind(this));
+
+            // Task events
+            Utils.delegateEvent(container, '.calendar-task', 'click', this.handleTaskClick.bind(this));
+            Utils.delegateEvent(container, '.task-enhance-btn', 'click', this.handleTaskEnhance.bind(this));
+
+            // Drag and drop (handled by global DragDropManager, but we can add specific logic)
+            Utils.delegateEvent(container, '.calendar-day', 'drop', this.handleTaskDrop.bind(this));
+        },
+
+        handleFilterChange(e) {
+            const filterId = e.target.id.replace('filter-', '');
+            this.currentFilters[filterId] = e.target.value;
+            this.render();
+        },
+
+        handleTaskClick(e) {
+            if (e.target.classList.contains('task-enhance-btn')) return; // Let the enhance handler deal with it
+            
+            const taskId = parseInt(e.target.closest('.calendar-task').dataset.taskId);
+            const task = this.tasks.find(t => t.id === taskId);
+            if (task) {
+                this.showTaskModal(task);
+            }
+        },
+
+        handleTaskEnhance(e) {
+            e.stopPropagation();
+            const taskId = parseInt(e.target.dataset.taskId);
+            const task = this.tasks.find(t => t.id === taskId);
+            if (task) {
+                showAITaskEnhanceModal(task);
+            }
+        },
+
+        handleTaskDrop(e) {
+            e.preventDefault();
+            const taskId = e.dataTransfer.getData('text/plain');
+            const task = this.tasks.find(t => t.id == taskId);
+            const day = e.target.closest('.calendar-day').dataset.day;
+            
+            if (task && day) {
+                task.day = day;
+                this.render();
+                NotificationManager.show(`Moved "${task.name}" to ${day}`, 'success');
+            }
+        },
+
+        getFilteredTasks() {
+            let filtered = this.tasks;
+            
+            if (this.currentFilters.type) {
+                filtered = filtered.filter(t => t.type === this.currentFilters.type);
+            }
+            if (this.currentFilters.member) {
+                filtered = filtered.filter(t => t.assigned === this.currentFilters.member);
+            }
+            if (this.currentFilters.status) {
+                filtered = filtered.filter(t => t.status === this.currentFilters.status);
+            }
+            
+            return filtered;
+        },
+
+        showTaskModal(task) {
+            const modal = ModalUtils.create('task-modal', 'Edit Task', `
+                <label>Name: <input id="modal-name" value="${task.name}" /></label><br>
+                <label>Description: <input id="modal-desc" value="${task.description}" /></label><br>
+                <label>Assigned: 
+                    <select id="modal-assigned">
+                        ${this.teamMembers.map(m => `<option value="${m}" ${task.assigned === m ? 'selected' : ''}>${m}</option>`).join('')}
+                    </select>
+                </label><br>
+                <label>Type: 
+                    <select id="modal-type">
+                        ${this.taskTypes.map(t => `<option value="${t}" ${task.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+                    </select>
+                </label><br>
+                <label>Status: 
+                    <select id="modal-status">
+                        <option value="Scheduled" ${task.status === "Scheduled" ? "selected" : ""}>Scheduled</option>
+                        <option value="Completed" ${task.status === "Completed" ? "selected" : ""}>Completed</option>
+                        <option value="Overdue" ${task.status === "Overdue" ? "selected" : ""}>Overdue</option>
+                    </select>
+                </label><br>
+                <label>Deadline: <input id="modal-deadline" type="date" value="${task.deadline}" /></label><br>
+                <label>Recurring: <input id="modal-recurring" type="checkbox" ${task.recurring ? "checked" : ""} /></label><br>
+            `, {
+                customActions: '<button id="modal-save" class="nav-btn primary">Save</button>'
             });
 
-            grid.appendChild(dayCol);
-        });
-
-        container.appendChild(grid);
-
-        // Filtering logic
-        filterBar.querySelectorAll('select').forEach(sel => {
-            sel.onchange = () => {
-                let filtered = calendarTasks;
-                const type = filterBar.querySelector('#filter-type').value;
-                const member = filterBar.querySelector('#filter-member').value;
-                const status = filterBar.querySelector('#filter-status').value;
-                if (type) filtered = filtered.filter(t => t.type === type);
-                if (member) filtered = filtered.filter(t => t.assigned === member);
-                if (status) filtered = filtered.filter(t => t.status === status);
-                // Re-render only filtered tasks
-                calendarDays.forEach(day => {
-                    const dayCol = grid.querySelector(`[data-day="${day}"]`);
-                    if (dayCol) {
-                        // Remove old tasks
-                        Array.from(dayCol.querySelectorAll('.calendar-task')).forEach(el => el.remove());
-                        // Add filtered tasks
-                        filtered.filter(t => t.day === day).forEach(task => {
-                            const taskDiv = document.createElement('div');
-                            taskDiv.className = 'calendar-task';
-                            taskDiv.draggable = true;
-                            taskDiv.style.background = task.color;
-                            taskDiv.style.margin = "8px 0";
-                            taskDiv.style.padding = "8px";
-                            taskDiv.style.borderRadius = "6px";
-                            taskDiv.innerHTML = `
-                                <span>${task.name}</span>
-                                <span style="float:right;">${task.assigned}</span>
-                            `;
-                            taskDiv.addEventListener('dragstart', e => {
-                                e.dataTransfer.setData('text/plain', task.id);
-                            });
-                            taskDiv.addEventListener('click', () => showTaskModal(task));
-                            taskDiv.innerHTML += `<button class="nav-btn" data-action="ai-task-enhance" style="margin-left:8px;">AI Enhance</button>`;
-                            taskDiv.querySelector('[data-action="ai-task-enhance"]').onclick = () => showAITaskEnhanceModal(task);
-                            dayCol.appendChild(taskDiv);
-                        });
-                    }
-                });
+            Utils.getElement('modal-save').onclick = () => {
+                task.name = Utils.getElement('modal-name').value;
+                task.description = Utils.getElement('modal-desc').value;
+                task.assigned = Utils.getElement('modal-assigned').value;
+                task.type = Utils.getElement('modal-type').value;
+                task.status = Utils.getElement('modal-status').value;
+                task.deadline = Utils.getElement('modal-deadline').value;
+                task.recurring = Utils.getElement('modal-recurring').checked;
+                this.render();
+                ModalUtils.destroy('task-modal');
+                NotificationManager.show('Task updated!', 'success');
             };
-        });
-    }
+        }
+    };
 
-    // Modal for task details/editing
-    function showTaskModal(task) {
-        let modal = document.getElementById('task-modal');
-        if (modal) modal.remove();
-        modal = document.createElement('div');
-        modal.id = 'task-modal';
-        modal.style.position = 'fixed';
-        modal.style.top = '50%';
-        modal.style.left = '50%';
-        modal.style.transform = 'translate(-50%, -50%)';
-        modal.style.background = '#fff';
-        modal.style.padding = '32px';
-        modal.style.borderRadius = '12px';
-        modal.style.boxShadow = '0 8px 32px rgba(0,0,0,0.15)';
-        modal.style.zIndex = '9999';
-        modal.innerHTML = `
-            <h3>Edit Task</h3>
-            <label>Name: <input id="modal-name" value="${task.name}" /></label><br>
-            <label>Description: <input id="modal-desc" value="${task.description}" /></label><br>
-            <label>Assigned: 
-                <select id="modal-assigned">
-                    ${teamMembers.map(m => `<option value="${m}" ${task.assigned === m ? 'selected' : ''}>${m}</option>`).join('')}
-                </select>
-            </label><br>
-            <label>Type: 
-                <select id="modal-type">
-                    ${taskTypes.map(t => `<option value="${t}" ${task.type === t ? 'selected' : ''}>${t}</option>`).join('')}
-                </select>
-            </label><br>
-            <label>Status: 
-                <select id="modal-status">
-                    <option value="Scheduled" ${task.status === "Scheduled" ? "selected" : ""}>Scheduled</option>
-                    <option value="Completed" ${task.status === "Completed" ? "selected" : ""}>Completed</option>
-                    <option value="Overdue" ${task.status === "Overdue" ? "selected" : ""}>Overdue</option>
-                </select>
-            </label><br>
-            <label>Deadline: <input id="modal-deadline" type="date" value="${task.deadline}" /></label><br>
-            <label>Recurring: <input id="modal-recurring" type="checkbox" ${task.recurring ? "checked" : ""} /></label><br>
-            <button id="modal-save" class="nav-btn primary">Save</button>
-            <button id="modal-cancel" class="nav-btn">Cancel</button>
-        `;
-        document.body.appendChild(modal);
+    CalendarManager.init();
 
-        document.getElementById('modal-save').onclick = () => {
-            task.name = document.getElementById('modal-name').value;
-            task.description = document.getElementById('modal-desc').value;
-            task.assigned = document.getElementById('modal-assigned').value;
-            task.type = document.getElementById('modal-type').value;
-            task.status = document.getElementById('modal-status').value;
-            task.deadline = document.getElementById('modal-deadline').value;
-            task.recurring = document.getElementById('modal-recurring').checked;
-            renderCalendar();
-            modal.remove();
-            showNotification('Task updated!');
-        };
-        document.getElementById('modal-cancel').onclick = () => modal.remove();
-    }
+    // Make calendarTasks available globally for compatibility
+    window.calendarTasks = CalendarManager.tasks;
 
-    // Show calendar when switching to calendar page
-    document.querySelector('[data-page="calendar"]').addEventListener('click', () => {
-        renderCalendar();
-    });
+    // Overview Manager (optimized)
+    const OverviewManager = {
+        init() {
+            NavigationManager.registerPageRenderer('overview', () => this.render());
+        },
 
-    function renderOverview() {
-        // Total tasks
-        const totalTasks = calendarTasks.length;
-        document.getElementById('overview-total-tasks').textContent = totalTasks;
+        render() {
+            // Total tasks
+            const totalTasks = CalendarManager.tasks.length;
+            const totalTasksEl = Utils.getElement('overview-total-tasks');
+            if (totalTasksEl) totalTasksEl.textContent = totalTasks;
 
-        // Active samples
-        const activeSamples = samples.filter(s => s.status === 'Checked In').length;
-        document.getElementById('overview-active-samples').textContent = activeSamples;
+            // Active samples  
+            const activeSamples = SampleManager.samples.filter(s => s.status === 'Checked In').length;
+            const activeSamplesEl = Utils.getElement('overview-active-samples');
+            if (activeSamplesEl) activeSamplesEl.textContent = activeSamples;
 
-        // Upcoming deadlines (next 3)
-        const upcoming = calendarTasks
-            .filter(t => new Date(t.deadline) >= new Date())
-            .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
-            .slice(0, 3);
-        const deadlinesList = document.getElementById('overview-upcoming-deadlines');
-        deadlinesList.innerHTML = upcoming.length
-            ? upcoming.map(t => `<li>${t.name} - ${t.deadline}</li>`).join('')
-            : '<li>No upcoming deadlines</li>';
+            // Upcoming deadlines (next 3)
+            const upcoming = CalendarManager.tasks
+                .filter(t => new Date(t.deadline) >= new Date())
+                .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
+                .slice(0, 3);
+            const deadlinesList = Utils.getElement('overview-upcoming-deadlines');
+            if (deadlinesList) {
+                deadlinesList.innerHTML = upcoming.length
+                    ? upcoming.map(t => `<li>${t.name} - ${t.deadline}</li>`).join('')
+                    : '<li>No upcoming deadlines</li>';
+            }
 
-        // Team utilization
-        const utilization = teamMembers.map(member => {
-            const count = calendarTasks.filter(t => t.assigned === member).length;
-            return `<li>${member}: ${count} task${count !== 1 ? 's' : ''}</li>`;
-        }).join('');
-        document.getElementById('overview-team-utilization').innerHTML = utilization;
-    }
+            // Team utilization
+            const utilization = CalendarManager.teamMembers.map(member => {
+                const count = CalendarManager.tasks.filter(t => t.assigned === member).length;
+                return `<li>${member}: ${count} task${count !== 1 ? 's' : ''}</li>`;
+            }).join('');
+            const utilizationEl = Utils.getElement('overview-team-utilization');
+            if (utilizationEl) utilizationEl.innerHTML = utilization;
+        }
+    };
 
-    // Render overview when switching to Overview tab
-    document.querySelector('[data-page="overview"]').addEventListener('click', () => {
-        renderOverview();
-    });
+    OverviewManager.init();
 
     // --- Workflow Designer ---
 
