@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Management Tool</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <nav class="topnav">
+        <div class="nav-logo">
+            <img src="assets/logo.svg" alt="Logo">
+        </div>
+        <ul class="nav-menu">
+            <li><a href="#" data-page="overview">Overview</a></li>
+            <li><a href="#" data-page="user-roles">User Roles</a></li>
+            <li><a href="#" data-page="features">Features</a></li>
+            <li><a href="#" data-page="calendar">Planning Calendar</a></li>
+            <li><a href="#" data-page="samples">Sample Management</a></li>
+            <li><a href="#" data-page="workflow">Workflow Designer</a></li>
+            <li><a href="#" data-page="assets">File Management</a></li>
+            <li><a href="#" data-page="review">Review & Collaboration</a></li>
+            <li><a href="#" data-page="analytics">Analytics</a></li>
+            <li><a href="#" data-page="style-guide">Style Guide</a></li>
+            <li><a href="#" data-page="editorial-projects">Editorial Projects</a></li>
+            <li><a href="#" data-page="analytics-dashboard">Reporting & Analytics</a></li>
+            <li><a href="#" data-page="integrations-hub">Integrations Hub</a></li>
+        </ul>
+        <div class="nav-actions">
+            <button class="nav-btn">Contact Sheet</button>
+            <button class="nav-btn primary">Actions</button>
+        </div>
+    </nav>
+    <header>
+        <h1>Content Creation Management Platform</h1>
+    </header>
+    <main>
+        <section id="overview" class="page-section">
+            <h2>Dashboard Overview</h2>
+            <div class="overview-grid">
+                <div class="overview-card">
+                    <h3>Total Tasks</h3>
+                    <div id="overview-total-tasks" class="overview-value">0</div>
+                </div>
+                <div class="overview-card">
+                    <h3>Active Samples</h3>
+                    <div id="overview-active-samples" class="overview-value">0</div>
+                </div>
+                <div class="overview-card">
+                    <h3>Upcoming Deadlines</h3>
+                    <ul id="overview-upcoming-deadlines" class="overview-list"></ul>
+                </div>
+                <div class="overview-card">
+                    <h3>Team Utilization</h3>
+                    <ul id="overview-team-utilization" class="overview-list"></ul>
+                </div>
+            </div>
+        </section>
+        <section id="user-roles" class="page-section" style="display:none;">
+            <h2>User Roles</h2>
+            <label for="role-select"><strong>Select your role:</strong></label>
+            <select id="role-select">
+                <option value="">-- Choose Role --</option>
+                <option value="studio-manager">Studio Manager</option>
+                <option value="planning-team">Planning Team</option>
+                <option value="sample-manager">Sample Manager</option>
+                <option value="stylist">Stylist</option>
+                <option value="photography-team">Photography Team</option>
+                <option value="copywriter">Copywriter</option>
+                <option value="art-director">Art Director</option>
+                <option value="post-production-vendor">Post-Production Vendor</option>
+            </select>
+            <div id="role-info" style="margin-top:20px;"></div>
+        </section>
+        <section id="features" class="page-section" style="display:none;">
+            <h2>Key Features</h2>
+            <ul>
+                <li>Drag-and-drop calendar scheduling</li>
+                <li>Automated notifications and progress tracking</li>
+                <li>Real-time collaborative review interface</li>
+                <li>AI-powered content enhancement tools</li>
+                <li>Performance analytics and reporting</li>
+            </ul>
+        </section>
+        <section id="calendar" class="page-section" style="display:none;">
+            <h2>Planning Calendar</h2>
+            <div class="calendar-container">
+                <div class="calendar-days">
+                    <div class="calendar-day" data-day="Monday">Monday</div>
+                    <div class="calendar-day" data-day="Tuesday">Tuesday</div>
+                    <div class="calendar-day" data-day="Wednesday">Wednesday</div>
+                    <div class="calendar-day" data-day="Thursday">Thursday</div>
+                    <div class="calendar-day" data-day="Friday">Friday</div>
+                </div>
+                <div class="calendar-tasks">
+                    <div class="calendar-task" draggable="true" data-task="Shoot Product A">Shoot Product A</div>
+                    <div class="calendar-task" draggable="true" data-task="Edit Product B">Edit Product B</div>
+                    <div class="calendar-task" draggable="true" data-task="Review Product C">Review Product C</div>
+                </div>
+            </div>
+            <div id="calendar-log" style="margin-top:20px; color:#0078ff;"></div>
+        </section>
+        <section id="samples" class="page-section" style="display:none;">
+            <h2>Sample Management</h2>
+            <div class="sample-controls">
+                <input type="text" id="sample-search" placeholder="Scan barcode/QR or search sample..." />
+                <button id="scan-btn" class="nav-btn">Mock Scan</button>
+            </div>
+            <div id="sample-list">
+                <!-- Sample items will be rendered here -->
+            </div>
+        </section>
+        <section id="workflow" class="page-section" style="display:none;">
+            <h2>Workflow Designer</h2>
+            <div class="workflow-toolbar">
+                <button id="add-step" class="nav-btn primary">Add Step</button>
+                <button id="save-workflow" class="nav-btn">Save Workflow</button>
+                <select id="workflow-template">
+                    <option value="">Load Template...</option>
+                    <option value="photography">Photography</option>
+                    <option value="editing">Editing</option>
+                    <option value="review">Review</option>
+                </select>
+            </div>
+            <div id="workflow-canvas" class="workflow-canvas"></div>
+            <div id="workflow-log" style="margin-top:20px;color:#0078ff;"></div>
+        </section>
+        <section id="assets" class="page-section" style="display:none;">
+            <h2>File Management</h2>
+            <div class="asset-upload-bar">
+                <input type="file" id="asset-upload" multiple />
+                <input type="text" id="asset-tags" placeholder="Add tags (comma separated)" />
+                <button id="upload-btn" class="nav-btn primary">Upload</button>
+            </div>
+            <div id="asset-list"></div>
+            <div id="asset-modal-root"></div>
+        </section>
+        <section id="review" class="page-section" style="display:none;">
+            <h2>Review & Collaboration</h2>
+            <div class="review-toolbar">
+                <select id="review-asset-select">
+                    <option value="">Select asset to review...</option>
+                </select>
+                <button id="start-review-btn" class="nav-btn primary">Start Review</button>
+            </div>
+            <div id="review-canvas" class="review-canvas"></div>
+            <div id="review-comments-panel" class="review-comments-panel"></div>
+        </section>
+        <section id="analytics" class="page-section" style="display:none;">
+            <h2>Analytics</h2>
+            <!-- Analytics content -->
+        </section>
+        <section id="style-guide" class="page-section" style="display:none;">
+            <h2>Style Guide</h2>
+            <!-- Style Guide content -->
+        </section>
+        <section id="editorial-projects" class="page-section" style="display:none;">
+            <h2>Editorial Projects</h2>
+            <div id="editorial-projects"></div>
+            <div id="project-modal-root"></div>
+            <div id="gantt-modal-root"></div>
+        </section>
+        <section id="analytics-dashboard" class="page-section" style="display:none;">
+            <!-- Dashboard and charts will be rendered here by JS -->
+        </section>
+        <section id="integrations-hub" class="page-section" style="display:none;">
+            <!-- Integrations Hub content will be rendered here by JS -->
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2023 Content Management Tool. All rights reserved.</p>
+    </footer>
+    <script src="scripts/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
+</html>

@@ -1,0 +1,411 @@
+.topnav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 32px;
+    height: 64px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.nav-logo img {
+    width: 40px;
+}
+
+.nav-menu {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 32px;
+}
+
+.nav-menu li {
+    display: flex;
+    align-items: center;
+}
+
+.nav-menu a {
+    color: #222;
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 8px 0;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-bottom 0.2s;
+}
+
+.nav-menu a:hover,
+.nav-menu a:focus {
+    color: #0078ff;
+    border-bottom: 2px solid #0078ff;
+}
+
+.nav-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.nav-btn {
+    background: #f0f4f8;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 1rem;
+    color: #222;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.nav-btn.primary {
+    background: #0078ff;
+    color: #fff;
+}
+
+.nav-btn:hover {
+    background: #e5e7eb;
+}
+
+.nav-btn.primary:hover {
+    background: #005bb5;
+}
+
+/* Adjust main content for top nav */
+header, main, footer {
+    margin-left: 0;
+    padding: 32px;
+}
+
+/* Calendar styles */
+.calendar-container {
+    display: flex;
+    gap: 40px;
+    margin-top: 24px;
+}
+
+.calendar-days {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 160px;
+}
+
+.calendar-day {
+    background: #f0f4f8;
+    border-radius: 8px;
+    padding: 18px 16px;
+    font-weight: 500;
+    color: #222;
+    min-height: 60px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    transition: background 0.2s;
+}
+
+.calendar-day.dragover {
+    background: #dbeafe;
+}
+
+.calendar-tasks {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.calendar-task {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 1rem;
+    color: #222;
+    cursor: grab;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    transition: box-shadow 0.2s;
+}
+
+.calendar-task:active {
+    box-shadow: 0 4px 16px rgba(0,120,255,0.08);
+}
+
+/* Sample Management styles */
+.sample-controls {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+#sample-search {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+#scan-btn {
+    background: #0078ff;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.sample-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+.sample-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sample-actions button {
+    margin-left: 8px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    font-size: 0.95rem;
+    cursor: pointer;
+    background: #f0f4f8;
+    color: #222;
+    transition: background 0.2s;
+}
+
+.sample-actions button.checkin {
+    background: #22c55e;
+    color: #fff;
+}
+
+.sample-actions button.checkout {
+    background: #f59e42;
+    color: #fff;
+}
+
+/* Overview dashboard styles */
+.overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 32px;
+    margin-top: 24px;
+}
+
+.overview-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.overview-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #0078ff;
+    margin-top: 8px;
+}
+
+.overview-list {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 1rem;
+    color: #222;
+}
+
+/* Workflow Designer styles */
+.workflow-toolbar {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 18px;
+    align-items: center;
+}
+
+.workflow-canvas {
+    min-height: 220px;
+    background: #f7f8fa;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    padding: 24px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+.workflow-step {
+    background: #fff;
+    border: 2px solid #0078ff;
+    border-radius: 10px;
+    padding: 18px 24px;
+    min-width: 160px;
+    min-height: 60px;
+    box-shadow: 0 2px 8px rgba(0,120,255,0.06);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    position: relative;
+    cursor: grab;
+    margin-bottom: 12px;
+}
+
+.workflow-step.dragging {
+    opacity: 0.5;
+    border-style: dashed;
+}
+
+.workflow-step .step-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+}
+
+.workflow-step .step-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.workflow-connector {
+    width: 40px;
+    height: 2px;
+    background: #0078ff;
+    align-self: center;
+    margin: 0 8px;
+}
+
+/* Asset/File Management styles */
+.asset-upload-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    align-items: center;
+}
+
+#asset-list {
+    margin-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+}
+
+.asset-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    padding: 18px;
+    min-width: 220px;
+    max-width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+}
+
+.asset-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.asset-tag {
+    background: #e0e7ef;
+    color: #0078ff;
+    border-radius: 6px;
+    padding: 2px 10px;
+    font-size: 0.9rem;
+}
+
+.asset-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.asset-version-history {
+    margin-top: 8px;
+    font-size: 0.95rem;
+    color: #555;
+}
+
+.asset-preview {
+    width: 100%;
+    max-height: 120px;
+    object-fit: contain;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+/* Review & Collaboration styles */
+.review-toolbar {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 18px;
+    align-items: center;
+}
+
+.review-canvas {
+    min-height: 320px;
+    background: #f7f8fa;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    padding: 24px;
+    position: relative;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.review-asset-img {
+    max-width: 100%;
+    max-height: 400px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    cursor: crosshair;
+}
+
+.review-markup {
+    position: absolute;
+    pointer-events: none;
+}
+
+.review-comments-panel {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    padding: 18px;
+    min-width: 260px;
+    max-width: 400px;
+    margin-top: 0;
+}
+
+.review-comment {
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.review-comment strong {
+    color: #0078ff;
+}
+
+.review-comment .comment-location {
+    font-size: 0.95rem;
+    color: #888;
+}
