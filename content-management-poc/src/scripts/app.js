@@ -1609,7 +1609,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     data: analyticsData.tasks.map(t => t.count),
                     backgroundColor: '#0078ff'
                 }]
-                       },
+                                                                                                                                 },
             options: { plugins: { legend: { display: false } } }
         });
     }
@@ -1837,52 +1837,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('ai-tag-close').onclick = () => modal.remove();
     }
 
-    // Add AI buttons to asset cards
-    function renderAssets(search = '', filterTag = '') {
-        const list = document.getElementById('asset-list');
-        if (!list) return;
-        list.innerHTML = '';
-        assets
-            .map((asset, idx) => ({ asset, idx }))
-            .filter(({ asset }) =>
-                asset.name.toLowerCase().includes(search.toLowerCase()) ||
-                asset.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase()))
-            )
-            .filter(({ asset }) =>
-                !filterTag || asset.tags.includes(filterTag)
-            )
-            .forEach(({ asset, idx }) => {
-                const card = document.createElement('div');
-                card.className = 'asset-card';
-                card.innerHTML = `
-                    <input type="checkbox" class="asset-checkbox" data-idx="${idx}" style="margin-bottom:8px;">
-                    ${asset.versions[asset.versions.length-1].url ? `<img src="${asset.versions[asset.versions.length-1].url}" class="asset-preview" alt="${asset.name}"/>` : ''}
-                    <strong>${asset.name}</strong>
-                    <div class="asset-tags">${asset.tags.map(tag => `<span class="asset-tag">${tag}</span>`).join('')}</div>
-                    <div class="asset-actions">
-                        <button class="nav-btn" data-action="tag">Edit Tags</button>
-                        <button class="nav-btn" data-action="version">Version History</button>
-                        <button class="nav-btn" data-action="upload">Upload New Version</button>
-                        <button class="nav-btn" data-action="ai-enhance">AI Enhance</button>
-                        <button class="nav-btn" data-action="ai-tags">AI Tag Suggest</button>
-                    </div>
-                `;
-                // Tag editing
-                card.querySelector('[data-action="tag"]').onclick = () => showTagModal(asset);
-                // Version history
-                card.querySelector('[data-action="version"]').onclick = () => showVersionModal(asset);
-                // Upload new version
-                card.querySelector('[data-action="upload"]').onclick = () => showUploadModal(asset);
-                // AI enhancement
-                card.querySelector('[data-action="ai-enhance"]').onclick = () => showAIEnhanceModal(asset);
-                // AI tag suggestion
-                card.querySelector('[data-action="ai-tags"]').onclick = () => suggestTagsForAsset(asset);
-                list.appendChild(card);
-            });
-
-        renderAssetBulkBar();
-    }
-
     // Optionally, add AI enhancement to review comments (mock)
     function showAIEnhanceCommentModal(comment) {
         let modal = document.getElementById('ai-enhance-comment-modal');
@@ -1951,205 +1905,217 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Advanced Contact Sheet & Actions Buttons ---
 
     // Contact Sheet: Export selected assets as PDF, CSV, or preview grid
-    document.querySelector('.nav-btn').addEventListener('click', function(e) {
-        if (this.textContent === "Contact Sheet") {
-            let modal = document.getElementById('contact-sheet-modal');
-            if (modal) modal.remove();
-            modal = document.createElement('div');
-            modal.id = 'contact-sheet-modal';
-            modal.style.position = 'fixed';
-            modal.style.top = '50%';
-            modal.style.left = '50%';
-            modal.style.transform = 'translate(-50%, -50%)';
-            modal.style.background = '#fff';
-            modal.style.padding = '32px';
-            modal.style.borderRadius = '12px';
-            modal.style.boxShadow = '0 8px 32px rgba(0,0,0,0.15)';
-            modal.style.zIndex = '9999';
-            const selectedAssets = Array.from(document.querySelectorAll('.asset-checkbox:checked')).map(cb => assets[parseInt(cb.dataset.idx)]);
-            modal.innerHTML = `
-                <h3>Contact Sheet</h3>
-                <div style="margin-bottom:16px;">
-                    <button id="contact-preview" class="nav-btn primary">Preview Grid</button>
-                    <button id="contact-export-pdf" class="nav-btn">Export PDF</button>
-                    <button id="contact-export-csv" class="nav-btn">Export CSV</button>
-                    <button id="contact-sheet-close" class="nav-btn">Close</button>
-                </div>
-                <div id="contact-sheet-content"></div>
-            `;
-            document.body.appendChild(modal);
+    document.getElementById('contact-sheet-btn').addEventListener('click', function(e) {
+        let modal = document.getElementById('contact-sheet-modal');
+        if (modal) modal.remove();
+        modal = document.createElement('div');
+        modal.id = 'contact-sheet-modal';
+        modal.style.position = 'fixed';
+        modal.style.top = '50%';
+        modal.style.left = '50%';
+        modal.style.transform = 'translate(-50%, -50%)';
+        modal.style.background = '#fff';
+        modal.style.padding = '32px';
+        modal.style.borderRadius = '12px';
+        modal.style.boxShadow = '0 8px 32px rgba(0,0,0,0.15)';
+        modal.style.zIndex = '9999';
+        const selectedAssets = Array.from(document.querySelectorAll('.asset-checkbox:checked')).map(cb => assets[parseInt(cb.dataset.idx)]);
+        modal.innerHTML = `
+            <h3>Contact Sheet</h3>
+            <div style="margin-bottom:16px;">
+                <button id="contact-preview" class="nav-btn primary">Preview Grid</button>
+                <button id="contact-export-pdf" class="nav-btn">Export PDF</button>
+                <button id="contact-export-csv" class="nav-btn">Export CSV</button>
+                <button id="contact-sheet-close" class="nav-btn">Close</button>
+            </div>
+            <div id="contact-sheet-content"></div>
+        `;
+        document.body.appendChild(modal);
 
-            // Preview grid
-            document.getElementById('contact-preview').onclick = () => {
-                const grid = selectedAssets.length ? selectedAssets : assets;
-                document.getElementById('contact-sheet-content').innerHTML = `
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;">
-                        ${grid.map(a => `
-                            <div style="border:1px solid #eee;padding:8px;text-align:center;">
-                                <img src="${a.versions[a.versions.length-1].url}" alt="${a.name}" style="max-width:100px;max-height:80px;">
-                                <div>${a.name}</div>
-                                <div style="font-size:0.9em;color:#888;">${a.tags.join(', ')}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            };
-
-            // Export CSV
-            document.getElementById('contact-export-csv').onclick = () => {
-                const grid = selectedAssets.length ? selectedAssets : assets;
-                const csv = [
-                    ["Name", "Tags", "Latest Version URL"].join(","),
-                    ...grid.map(a => [
-                        `"${a.name}"`,
-                        `"${a.tags.join(';')}"`,
-                        `"${a.versions[a.versions.length-1].url}"`
-                    ].join(","))
-                ].join("\n");
-                const blob = new Blob([csv], { type: "text/csv" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = "contact-sheet.csv";
-                a.click();
-                URL.revokeObjectURL(url);
-            };
-
-            // Export PDF (simple, using window.print for demo)
-            document.getElementById('contact-export-pdf').onclick = () => {
-                const grid = selectedAssets.length ? selectedAssets : assets;
-                const win = window.open('', '', 'width=800,height=600');
-                win.document.write('<html><head><title>Contact Sheet PDF</title></head><body>');
-                win.document.write('<h2>Contact Sheet</h2>');
-                win.document.write('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;">');
-                grid.forEach(a => {
-                    win.document.write(`
+        // Preview grid
+        document.getElementById('contact-preview').onclick = () => {
+            const grid = selectedAssets.length ? selectedAssets : assets;
+            document.getElementById('contact-sheet-content').innerHTML = `
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;">
+                    ${grid.map(a => `
                         <div style="border:1px solid #eee;padding:8px;text-align:center;">
                             <img src="${a.versions[a.versions.length-1].url}" alt="${a.name}" style="max-width:100px;max-height:80px;">
                             <div>${a.name}</div>
                             <div style="font-size:0.9em;color:#888;">${a.tags.join(', ')}</div>
                         </div>
-                    `);
-                });
-                win.document.write('</div></body></html>');
-                win.document.close();
-                win.print();
-            };
+                    `).join('')}
+                </div>
+            `;
+        };
 
-            document.getElementById('contact-sheet-close').onclick = () => modal.remove();
-        }
+        // Export CSV
+        document.getElementById('contact-export-csv').onclick = () => {
+            const grid = selectedAssets.length ? selectedAssets : assets;
+            const csv = [
+                ["Name", "Tags", "Latest Version URL"].join(","),
+                ...grid.map(a => [
+                    `"${a.name}"`,
+                    `"${a.tags.join(';')}"`,
+                    `"${a.versions[a.versions.length-1].url}"`
+                ].join(","))
+            ].join("\n");
+            const blob = new Blob([csv], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "contact-sheet.csv";
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        // Export PDF (simple, using window.print for demo)
+        document.getElementById('contact-export-pdf').onclick = () => {
+            const grid = selectedAssets.length ? selectedAssets : assets;
+            const win = window.open('', '', 'width=800,height=600');
+            win.document.write('<html><head><title>Contact Sheet PDF</title></head><body>');
+            win.document.write('<h2>Contact Sheet</h2>');
+            win.document.write('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;">');
+            grid.forEach(a => {
+                win.document.write(`
+                    <div style="border:1px solid #eee;padding:8px;text-align:center;">
+                        <img src="${a.versions[a.versions.length-1].url}" alt="${a.name}" style="max-width:100px;max-height:80px;">
+                        <div>${a.name}</div>
+                        <div style="font-size:0.9em;color:#888;">${a.tags.join(', ')}</div>
+                    </div>
+                `);
+            });
+            win.document.write('</div></body></html>');
+            win.document.close();
+            win.print();
+        };
+
+        document.getElementById('contact-sheet-close').onclick = () => modal.remove();
     });
 
     // Actions: Multi-function menu for bulk asset, sample, and project actions
-    document.querySelector('.nav-btn.primary').addEventListener('click', function(e) {
-        if (this.textContent === "Actions") {
-            let modal = document.getElementById('actions-modal');
-            if (modal) modal.remove();
-            modal = document.createElement('div');
-            modal.id = 'actions-modal';
-            modal.style.position = 'fixed';
-            modal.style.top = '50%';
-            modal.style.left = '50%';
-            modal.style.transform = 'translate(-50%, -50%)';
-            modal.style.background = '#fff';
-            modal.style.padding = '32px';
-            modal.style.borderRadius = '12px';
-            modal.style.boxShadow = '0 8px 32px rgba(0,0,0,0.15)';
-            modal.style.zIndex = '9999';
-            modal.innerHTML = `
-                <h3>Actions</h3>
-                <div style="display:flex;flex-direction:column;gap:12px;">
-                    <button id="bulk-delete-assets" class="nav-btn">Bulk Delete Assets</button>
-                    <button id="bulk-tag-assets" class="nav-btn">Bulk Tag Assets</button>
-                    <button id="bulk-checkin-samples" class="nav-btn">Bulk Check In Samples</button>
-                    <button id="bulk-checkout-samples" class="nav-btn">Bulk Check Out Samples</button>
-                    <button id="bulk-move-samples" class="nav-btn">Bulk Move Samples</button>
-                    <button id="bulk-complete-projects" class="nav-btn">Bulk Complete Projects</button>
-                    <button id="actions-close" class="nav-btn">Close</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
+    document.getElementById('actions-btn').addEventListener('click', function(e) {
+        let modal = document.getElementById('actions-modal');
+        if (modal) modal.remove();
+        modal = document.createElement('div');
+        modal.id = 'actions-modal';
+        modal.style.position = 'fixed';
+        modal.style.top = '50%';
+        modal.style.left = '50%';
+        modal.style.transform = 'translate(-50%, -50%)';
+        modal.style.background = '#fff';
+        modal.style.padding = '32px';
+        modal.style.borderRadius = '12px';
+        modal.style.boxShadow = '0 8px 32px rgba(0,0,0,0.15)';
+        modal.style.zIndex = '9999';
+        modal.innerHTML = `
+            <h3>Actions</h3>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <button id="bulk-delete-assets" class="nav-btn">Bulk Delete Assets</button>
+                <button id="bulk-tag-assets" class="nav-btn">Bulk Tag Assets</button>
+                <button id="bulk-checkin-samples" class="nav-btn">Bulk Check In Samples</button>
+                <button id="bulk-checkout-samples" class="nav-btn">Bulk Check Out Samples</button>
+                <button id="bulk-move-samples" class="nav-btn">Bulk Move Samples</button>
+                <button id="bulk-complete-projects" class="nav-btn">Bulk Complete Projects</button>
+                <button id="actions-close" class="nav-btn">Close</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
 
-            // Bulk asset delete
-            document.getElementById('bulk-delete-assets').onclick = () => {
+        // Bulk asset delete
+        document.getElementById('bulk-delete-assets').onclick = () => {
+            document.querySelectorAll('.asset-checkbox:checked').forEach(cb => {
+                const idx = parseInt(cb.dataset.idx);
+                assets.splice(idx, 1);
+            });
+            renderAssets(document.getElementById('asset-search').value, document.getElementById('asset-filter-tag').value);
+            showNotification('Selected assets deleted!');
+        };
+
+        // Bulk asset tag
+        document.getElementById('bulk-tag-assets').onclick = () => {
+            const tag = prompt("Enter tag to add to selected assets:");
+            if (tag) {
                 document.querySelectorAll('.asset-checkbox:checked').forEach(cb => {
                     const idx = parseInt(cb.dataset.idx);
-                    assets.splice(idx, 1);
+                    if (!assets[idx].tags.includes(tag)) assets[idx].tags.push(tag);
                 });
                 renderAssets(document.getElementById('asset-search').value, document.getElementById('asset-filter-tag').value);
-                showNotification('Selected assets deleted!');
-            };
+                showNotification('Tag added to selected assets!');
+            }
+        };
 
-            // Bulk asset tag
-            document.getElementById('bulk-tag-assets').onclick = () => {
-                const tag = prompt("Enter tag to add to selected assets:");
-                if (tag) {
-                    document.querySelectorAll('.asset-checkbox:checked').forEach(cb => {
-                        const idx = parseInt(cb.dataset.idx);
-                        if (!assets[idx].tags.includes(tag)) assets[idx].tags.push(tag);
-                    });
-                    renderAssets(document.getElementById('asset-search').value, document.getElementById('asset-filter-tag').value);
-                    showNotification('Tag added to selected assets!');
-                }
-            };
+        // Bulk sample check in
+        document.getElementById('bulk-checkin-samples').onclick = () => {
+            document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
+                const idx = parseInt(cb.dataset.idx);
+                samples[idx].status = 'Checked In';
+                samples[idx].location = 'Shelf A1';
+            });
+            renderSamples(document.getElementById('sample-search').value);
+            showNotification('Selected samples checked in!');
+        };
 
-            // Bulk sample check in
-            document.getElementById('bulk-checkin-samples').onclick = () => {
-                document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                    const idx = parseInt(cb.dataset.idx);
-                    samples[idx].status = 'Checked In';
-                    samples[idx].location = 'Shelf A1';
-                });
-                renderSamples(document.getElementById('sample-search').value);
-                showNotification('Selected samples checked in!');
-            };
+        // Bulk sample check out
+        document.getElementById('bulk-checkout-samples').onclick = () => {
+            document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
+                const idx = parseInt(cb.dataset.idx);
+                samples[idx].status = 'Checked Out';
+                samples[idx].location = 'Studio';
+            });
+            renderSamples(document.getElementById('sample-search').value);
+            showNotification('Selected samples checked out!');
+        };
 
-            // Bulk sample check out
-            document.getElementById('bulk-checkout-samples').onclick = () => {
-                document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                    const idx = parseInt(cb.dataset.idx);
-                    samples[idx].status = 'Checked Out';
-                    samples[idx].location = 'Studio';
-                });
-                renderSamples(document.getElementById('sample-search').value);
-                showNotification('Selected samples checked out!');
-            };
-
-            // Bulk sample move
-            document.getElementById('bulk-move-samples').onclick = () => {
-                const selector = document.createElement('select');
-                selector.innerHTML = locations.map(loc =>
-                    `<optgroup label="${loc.name}">` +
-                    loc.rooms.map(room =>
-                        `<optgroup label="${room.name}">` +
-                        room.shelves.map(shelf =>
-                            `<option value="${shelf}">${shelf}</option>`
-                        ).join('') +
-                        `</optgroup>`
+        // Bulk sample move
+        document.getElementById('bulk-move-samples').onclick = () => {
+            const selector = document.createElement('select');
+            selector.innerHTML = locations.map(loc =>
+                `<optgroup label="${loc.name}">` +
+                loc.rooms.map(room =>
+                    `<optgroup label="${room.name}">` +
+                    room.shelves.map(shelf =>
+                        `<option value="${shelf}">${shelf}</option>`
                     ).join('') +
                     `</optgroup>`
-                ).join('');
-                selector.onchange = () => {
-                    document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                        const idx = parseInt(cb.dataset.idx);
-                        samples[idx].location = selector.value;
-                    });
-                    renderSamples(document.getElementById('sample-search').value);
-                    showNotification('Selected samples moved!');
-                };
-                document.getElementById('actions-modal').appendChild(selector);
-            };
-
-            // Bulk complete projects
-            document.getElementById('bulk-complete-projects').onclick = () => {
-                editorialProjects.forEach(p => {
-                    if (p.status !== "Completed") p.status = "Completed";
+                ).join('') +
+                `</optgroup>`
+            ).join('');
+            selector.onchange = () => {
+                document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
+                    const idx = parseInt(cb.dataset.idx);
+                    samples[idx].location = selector.value;
                 });
-                renderEditorialProjects();
-                showNotification('All projects marked as completed!');
+                renderSamples(document.getElementById('sample-search').value);
+                showNotification('Selected samples moved!');
             };
+            bulkBar.appendChild(selector);
+        };
+    });
 
-            document.getElementById('actions-close').onclick = () => modal.remove();
+    // --- Debugging and Development Tools ---
+
+    // Toggle debug mode (shows/hides debug info panel)
+    let debugMode = false;
+    function toggleDebugMode() {
+        debugMode = !debugMode;
+        const panel = document.getElementById('debug-panel');
+        if (debugMode) {
+            panel.style.display = 'block';
+            panel.innerHTML = `
+                <h3>Debug Info</h3>
+                <pre>${JSON.stringify({
+                    assets,
+                    samples,
+                    calendarTasks,
+                    editorialProjects,
+                    workflowSteps
+                }, null, 2)}</pre>
+            `;
+        } else {
+            panel.style.display = 'none';
         }
-    };
+    }
+    document.getElementById('debug-toggle').onclick = toggleDebugMode;
+
+    // --- End of app.js ---
 });
