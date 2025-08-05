@@ -2342,52 +2342,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        // Bulk sample check in
-        document.getElementById('bulk-checkin-samples').onclick = () => {
-            document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                const idx = parseInt(cb.dataset.idx);
-                samples[idx].status = 'Checked In';
-                samples[idx].location = 'Shelf A1';
-            });
-            renderSamples(document.getElementById('sample-search').value);
-            showNotification('Selected samples checked in!');
-        };
-
-        // Bulk sample check out
-        document.getElementById('bulk-checkout-samples').onclick = () => {
-            document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                const idx = parseInt(cb.dataset.idx);
-                samples[idx].status = 'Checked Out';
-                samples[idx].location = 'Studio';
-            });
-            renderSamples(document.getElementById('sample-search').value);
-            showNotification('Selected samples checked out!');
-        };
-
-        // Bulk sample move
-        document.getElementById('bulk-move-samples').onclick = () => {
-            const selector = document.createElement('select');
-            selector.innerHTML = locations.map(loc =>
-                `<optgroup label="${loc.name}">` +
-                loc.rooms.map(room =>
-                    `<optgroup label="${room.name}">` +
-                    room.shelves.map(shelf =>
-                        `<option value="${shelf}">${shelf}</option>`
-                    ).join('') +
-                    `</optgroup>`
-                ).join('') +
-                `</optgroup>`
-            ).join('');
-            selector.onchange = () => {
-                document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                    const idx = parseInt(cb.dataset.idx);
-                    samples[idx].location = selector.value;
-                });
-                renderSamples(document.getElementById('sample-search').value);
-                showNotification('Selected samples moved!');
-            };
-            bulkBar.appendChild(selector);
-        };
     });
 
     // --- Debugging and Development Tools ---
