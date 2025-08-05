@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Handle the dropped item (e.g., schedule a task)
             console.log(`Dropped: ${data}`);
         });
-    };
+    }
 
     // Example function to show notifications
     const showNotification = (message) => {
@@ -41,6 +41,20 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.page-section').forEach(section => {
                 section.style.display = section.id === page ? 'block' : 'none';
             });
+            // Optionally, call render functions for each page
+            if (page === "editorial-projects") renderEditorialProjects();
+            if (page === "analytics-dashboard") renderAnalyticsDashboard();
+            if (page === "integrations-hub") renderIntegrationsHub();
+            if (page === "assets") renderAssets();
+            if (page === "samples") renderSamples();
+            if (page === "workflow") renderWorkflow();
+            if (page === "review") {
+                updateReviewAssetDropdown();
+                document.getElementById('review-canvas').innerHTML = '';
+                document.getElementById('review-comments-panel').innerHTML = '';
+            }
+            if (page === "overview") renderOverview();
+            if (page === "style-guide") renderStyleGuide();
         });
     });
 
@@ -765,7 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Asset/File Management ---
 
-    let assets = [
+    assets = [
         // Example asset
         // {
         //     id: 1,
@@ -912,7 +926,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Review & Collaboration ---
 
     // Test data for assets
-    let assets = [
+    assets = [
         {
             id: 101,
             name: "RedDress.jpg",
@@ -1593,26 +1607,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 labels: analyticsData.tasks.map(t => t.type),
                 datasets: [{
                     data: analyticsData.tasks.map(t => t.count),
-                    backgroundColor: ['#0078ff', '#22c55e', '#f59e42', '#6366f1']
-                }]
-            },
-            options: { plugins: { legend: { position: 'bottom' } } }
-        });
-    }
-
-    function renderAssetChart() {
-        const ctx = document.getElementById('asset-chart').getContext('2d');
-        if (window.assetChartObj) window.assetChartObj.destroy();
-        window.assetChartObj = new window.Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: analyticsData.assets.map(a => a.tag),
-                datasets: [{
-                    label: 'Assets',
-                    data: analyticsData.assets.map(a => a.count),
                     backgroundColor: '#0078ff'
                 }]
-            },
+                       },
             options: { plugins: { legend: { display: false } } }
         });
     }
@@ -1677,14 +1674,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }]
             },
             options: {
-                scales: {
-                    y: {
-                        min: 0,
-                        max: 1,
-                        ticks: { stepSize: 1, callback: v => v ? 'Completed' : 'Pending' }
-                    }
-                },
-                plugins: { legend: { position: 'bottom' } }
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 1,
+                            ticks: { stepSize: 1, callback: v => v ? 'Completed' : 'Pending' }
+                        }
+                    },
+                    plugins: { legend: { position: 'bottom' } }
+                }
             });
     }
 
@@ -1737,7 +1735,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 ]
             },
             options: {
-                plugins: { legend: { position: 'bottom' } }
+                    plugins: { legend: { position: 'bottom' } }
+                }
             });
     }
 
@@ -1949,40 +1948,208 @@ document.addEventListener('DOMContentLoaded', () => {
                 : `<div>No comments yet. Click on the image to add a markup/comment.</div>`);
     }
 
-    // --- Integrations Hub (Mock): List of integrations ---
+    // --- Advanced Contact Sheet & Actions Buttons ---
 
-    function renderIntegrationsHub() {
-        const container = document.getElementById('integrations-hub');
-        if (!container) return;
-        const integrations = [
-            { name: "Dropbox", icon: "📦", description: "Cloud file storage" },
-            { name: "Google Drive", icon: "🟩", description: "Cloud file storage" },
-            { name: "Adobe Creative Cloud", icon: "🅰️", description: "Design & editing tools" },
-            { name: "Slack", icon: "💬", description: "Team communication" },
-            { name: "Microsoft Teams", icon: "🟪", description: "Collaboration platform" },
-            { name: "Box", icon: "🗃️", description: "Enterprise file sharing" },
-            { name: "Asana", icon: "✅", description: "Project management" },
-            { name: "Jira", icon: "🟦", description: "Issue tracking" },
-            { name: "Trello", icon: "🟩", description: "Kanban boards" }
-        ];
-        container.innerHTML = `
-            <h2>Integrations Hub (Mock)</h2>
-            <div style="display:flex;flex-wrap:wrap;gap:24px;">
-                ${integrations.map(int => `
-                    <div class="integration-card" style="background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.03);padding:18px;min-width:200px;flex:1;">
-                        <div style="font-size:2em;">${int.icon}</div>
-                        <strong>${int.name}</strong>
-                        <div style="color:#888;">${int.description}</div>
-                        <button class="nav-btn" disabled style="margin-top:12px;">Connect</button>
+    // Contact Sheet: Export selected assets as PDF, CSV, or preview grid
+    document.querySelector('.nav-btn').addEventListener('click', function(e) {
+        if (this.textContent === "Contact Sheet") {
+            let modal = document.getElementById('contact-sheet-modal');
+            if (modal) modal.remove();
+            modal = document.createElement('div');
+            modal.id = 'contact-sheet-modal';
+            modal.style.position = 'fixed';
+            modal.style.top = '50%';
+            modal.style.left = '50%';
+            modal.style.transform = 'translate(-50%, -50%)';
+            modal.style.background = '#fff';
+            modal.style.padding = '32px';
+            modal.style.borderRadius = '12px';
+            modal.style.boxShadow = '0 8px 32px rgba(0,0,0,0.15)';
+            modal.style.zIndex = '9999';
+            const selectedAssets = Array.from(document.querySelectorAll('.asset-checkbox:checked')).map(cb => assets[parseInt(cb.dataset.idx)]);
+            modal.innerHTML = `
+                <h3>Contact Sheet</h3>
+                <div style="margin-bottom:16px;">
+                    <button id="contact-preview" class="nav-btn primary">Preview Grid</button>
+                    <button id="contact-export-pdf" class="nav-btn">Export PDF</button>
+                    <button id="contact-export-csv" class="nav-btn">Export CSV</button>
+                    <button id="contact-sheet-close" class="nav-btn">Close</button>
+                </div>
+                <div id="contact-sheet-content"></div>
+            `;
+            document.body.appendChild(modal);
+
+            // Preview grid
+            document.getElementById('contact-preview').onclick = () => {
+                const grid = selectedAssets.length ? selectedAssets : assets;
+                document.getElementById('contact-sheet-content').innerHTML = `
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;">
+                        ${grid.map(a => `
+                            <div style="border:1px solid #eee;padding:8px;text-align:center;">
+                                <img src="${a.versions[a.versions.length-1].url}" alt="${a.name}" style="max-width:100px;max-height:80px;">
+                                <div>${a.name}</div>
+                                <div style="font-size:0.9em;color:#888;">${a.tags.join(', ')}</div>
+                            </div>
+                        `).join('')}
                     </div>
-                `).join('')}
-            </div>
-            <div style="margin-top:24px;color:#888;">All integrations are mock/demo only.</div>
-        `;
-    }
+                `;
+            };
 
-    // Render Integrations Hub when switching to Integrations tab
-    document.querySelector('[data-page="integrations-hub"]').addEventListener('click', () => {
-        renderIntegrationsHub();
+            // Export CSV
+            document.getElementById('contact-export-csv').onclick = () => {
+                const grid = selectedAssets.length ? selectedAssets : assets;
+                const csv = [
+                    ["Name", "Tags", "Latest Version URL"].join(","),
+                    ...grid.map(a => [
+                        `"${a.name}"`,
+                        `"${a.tags.join(';')}"`,
+                        `"${a.versions[a.versions.length-1].url}"`
+                    ].join(","))
+                ].join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "contact-sheet.csv";
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+
+            // Export PDF (simple, using window.print for demo)
+            document.getElementById('contact-export-pdf').onclick = () => {
+                const grid = selectedAssets.length ? selectedAssets : assets;
+                const win = window.open('', '', 'width=800,height=600');
+                win.document.write('<html><head><title>Contact Sheet PDF</title></head><body>');
+                win.document.write('<h2>Contact Sheet</h2>');
+                win.document.write('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;">');
+                grid.forEach(a => {
+                    win.document.write(`
+                        <div style="border:1px solid #eee;padding:8px;text-align:center;">
+                            <img src="${a.versions[a.versions.length-1].url}" alt="${a.name}" style="max-width:100px;max-height:80px;">
+                            <div>${a.name}</div>
+                            <div style="font-size:0.9em;color:#888;">${a.tags.join(', ')}</div>
+                        </div>
+                    `);
+                });
+                win.document.write('</div></body></html>');
+                win.document.close();
+                win.print();
+            };
+
+            document.getElementById('contact-sheet-close').onclick = () => modal.remove();
+        }
     });
+
+    // Actions: Multi-function menu for bulk asset, sample, and project actions
+    document.querySelector('.nav-btn.primary').addEventListener('click', function(e) {
+        if (this.textContent === "Actions") {
+            let modal = document.getElementById('actions-modal');
+            if (modal) modal.remove();
+            modal = document.createElement('div');
+            modal.id = 'actions-modal';
+            modal.style.position = 'fixed';
+            modal.style.top = '50%';
+            modal.style.left = '50%';
+            modal.style.transform = 'translate(-50%, -50%)';
+            modal.style.background = '#fff';
+            modal.style.padding = '32px';
+            modal.style.borderRadius = '12px';
+            modal.style.boxShadow = '0 8px 32px rgba(0,0,0,0.15)';
+            modal.style.zIndex = '9999';
+            modal.innerHTML = `
+                <h3>Actions</h3>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <button id="bulk-delete-assets" class="nav-btn">Bulk Delete Assets</button>
+                    <button id="bulk-tag-assets" class="nav-btn">Bulk Tag Assets</button>
+                    <button id="bulk-checkin-samples" class="nav-btn">Bulk Check In Samples</button>
+                    <button id="bulk-checkout-samples" class="nav-btn">Bulk Check Out Samples</button>
+                    <button id="bulk-move-samples" class="nav-btn">Bulk Move Samples</button>
+                    <button id="bulk-complete-projects" class="nav-btn">Bulk Complete Projects</button>
+                    <button id="actions-close" class="nav-btn">Close</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // Bulk asset delete
+            document.getElementById('bulk-delete-assets').onclick = () => {
+                document.querySelectorAll('.asset-checkbox:checked').forEach(cb => {
+                    const idx = parseInt(cb.dataset.idx);
+                    assets.splice(idx, 1);
+                });
+                renderAssets(document.getElementById('asset-search').value, document.getElementById('asset-filter-tag').value);
+                showNotification('Selected assets deleted!');
+            };
+
+            // Bulk asset tag
+            document.getElementById('bulk-tag-assets').onclick = () => {
+                const tag = prompt("Enter tag to add to selected assets:");
+                if (tag) {
+                    document.querySelectorAll('.asset-checkbox:checked').forEach(cb => {
+                        const idx = parseInt(cb.dataset.idx);
+                        if (!assets[idx].tags.includes(tag)) assets[idx].tags.push(tag);
+                    });
+                    renderAssets(document.getElementById('asset-search').value, document.getElementById('asset-filter-tag').value);
+                    showNotification('Tag added to selected assets!');
+                }
+            };
+
+            // Bulk sample check in
+            document.getElementById('bulk-checkin-samples').onclick = () => {
+                document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
+                    const idx = parseInt(cb.dataset.idx);
+                    samples[idx].status = 'Checked In';
+                    samples[idx].location = 'Shelf A1';
+                });
+                renderSamples(document.getElementById('sample-search').value);
+                showNotification('Selected samples checked in!');
+            };
+
+            // Bulk sample check out
+            document.getElementById('bulk-checkout-samples').onclick = () => {
+                document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
+                    const idx = parseInt(cb.dataset.idx);
+                    samples[idx].status = 'Checked Out';
+                    samples[idx].location = 'Studio';
+                });
+                renderSamples(document.getElementById('sample-search').value);
+                showNotification('Selected samples checked out!');
+            };
+
+            // Bulk sample move
+            document.getElementById('bulk-move-samples').onclick = () => {
+                const selector = document.createElement('select');
+                selector.innerHTML = locations.map(loc =>
+                    `<optgroup label="${loc.name}">` +
+                    loc.rooms.map(room =>
+                        `<optgroup label="${room.name}">` +
+                        room.shelves.map(shelf =>
+                            `<option value="${shelf}">${shelf}</option>`
+                        ).join('') +
+                        `</optgroup>`
+                    ).join('') +
+                    `</optgroup>`
+                ).join('');
+                selector.onchange = () => {
+                    document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
+                        const idx = parseInt(cb.dataset.idx);
+                        samples[idx].location = selector.value;
+                    });
+                    renderSamples(document.getElementById('sample-search').value);
+                    showNotification('Selected samples moved!');
+                };
+                document.getElementById('actions-modal').appendChild(selector);
+            };
+
+            // Bulk complete projects
+            document.getElementById('bulk-complete-projects').onclick = () => {
+                editorialProjects.forEach(p => {
+                    if (p.status !== "Completed") p.status = "Completed";
+                });
+                renderEditorialProjects();
+                showNotification('All projects marked as completed!');
+            };
+
+            document.getElementById('actions-close').onclick = () => modal.remove();
+        }
+    };
 });
