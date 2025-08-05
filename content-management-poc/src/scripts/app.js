@@ -1,163 +1,391 @@
 // app.js
 
+// Utility functions for common operations
+const Utils = {
+    // DOM utilities
+    createElement(tag, className = '', innerHTML = '') {
+        const element = document.createElement(tag);
+        if (className) element.className = className;
+        if (innerHTML) element.innerHTML = innerHTML;
+        return element;
+    },
+
+    // Cached DOM element getter
+    domCache: new Map(),
+    getElement(id) {
+        if (!this.domCache.has(id)) {
+            this.domCache.set(id, document.getElementById(id));
+        }
+        return this.domCache.get(id);
+    },
+
+    // Batch DOM updates using document fragment
+    batchUpdate(container, elements) {
+        const fragment = document.createDocumentFragment();
+        elements.forEach(el => fragment.appendChild(el));
+        container.innerHTML = '';
+        container.appendChild(fragment);
+    },
+
+    // Event delegation helper
+    delegateEvent(container, selector, event, handler) {
+        container.addEventListener(event, (e) => {
+            if (e.target.matches(selector) || e.target.closest(selector)) {
+                handler(e);
+            }
+        });
+    },
+
+    // Debounce utility for search/filtering
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+};
+
+// Modal utility for consistent modal creation
+const ModalUtils = {
+    activeModals: new Set(),
+
+    create(id, title, content, options = {}) {
+        this.destroy(id); // Ensure no duplicates
+        
+        const modal = Utils.createElement('div', '', `
+            <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+                        background:#fff;padding:32px;border-radius:12px;
+                        box-shadow:0 8px 32px rgba(0,0,0,0.15);z-index:9999;
+                        max-width:${options.maxWidth || '600px'};width:90%;">
+                <h3>${title}</h3>
+                <div class="modal-content">${content}</div>
+                <div class="modal-actions" style="margin-top:18px;">
+                    ${options.customActions || ''}
+                    <button class="modal-close nav-btn">Close</button>
+                </div>
+            </div>
+        `);
+        modal.id = id;
+        
+        // Add close functionality
+        modal.querySelector('.modal-close').onclick = () => this.destroy(id);
+        
+        document.body.appendChild(modal);
+        this.activeModals.add(id);
+        return modal;
+    },
+
+    destroy(id) {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.remove();
+            this.activeModals.delete(id);
+        }
+    },
+
+    destroyAll() {
+        this.activeModals.forEach(id => this.destroy(id));
+    }
+};
+
+// Enhanced notification system
+const NotificationManager = {
+    notifications: [],
+    container: null,
+
+    init() {
+        if (!this.container) {
+            this.container = Utils.createElement('div', 'notification-container');
+            this.container.style.cssText = `
+                position: fixed; top: 20px; right: 20px; z-index: 10000;
+                display: flex; flex-direction: column; gap: 8px;
+            `;
+            document.body.appendChild(this.container);
+        }
+    },
+
+    show(message, type = 'info', duration = 3000) {
+        this.init();
+        
+        const notification = Utils.createElement('div', `notification notification-${type}`, `
+            <span class="notification-message">${message}</span>
+            <button class="notification-close">&times;</button>
+        `);
+        
+        notification.style.cssText = `
+            background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#22c55e' : '#0078ff'};
+            color: white; padding: 12px 16px; border-radius: 6px; display: flex;
+            justify-content: space-between; align-items: center; min-width: 250px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateX(100%);
+            transition: transform 0.3s ease;
+        `;
+        
+        const closeBtn = notification.querySelector('.notification-close');
+        closeBtn.style.cssText = `
+            background: none; border: none; color: white; font-size: 18px;
+            cursor: pointer; margin-left: 12px; opacity: 0.8;
+        `;
+        
+        closeBtn.onclick = () => this.remove(notification);
+        
+        this.container.appendChild(notification);
+        this.notifications.push(notification);
+        
+        // Animate in
+        requestAnimationFrame(() => {
+            notification.style.transform = 'translateX(0)';
+        });
+        
+        // Auto remove
+        if (duration > 0) {
+            setTimeout(() => this.remove(notification), duration);
+        }
+    },
+
+    remove(notification) {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+                this.notifications = this.notifications.filter(n => n !== notification);
+            }
+        }, 300);
+    }
+};
+
+// Legacy notification function for backward compatibility
+const showNotification = (message, type = 'info') => {
+    NotificationManager.show(message, type);
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize the application
     console.log('Content Management Tool Initialized');
 
-    // Example function to handle drag-and-drop scheduling
-    const initDragAndDrop = () => {
-        const calendar = document.getElementById('calendar');
-        calendar.addEventListener('dragover', (event) => {
-            event.preventDefault();
-        });
+    // Navigation system with efficient page management
+    const NavigationManager = {
+        currentPage: 'overview',
+        pageRenderers: new Map(),
+        pageCache: new Map(),
 
-        calendar.addEventListener('drop', (event) => {
-            event.preventDefault();
-            const data = event.dataTransfer.getData('text/plain');
-            // Handle the dropped item (e.g., schedule a task)
-            console.log(`Dropped: ${data}`);
-        });
-    }
+        init() {
+            // Use event delegation for navigation
+            Utils.delegateEvent(document.querySelector('.nav-menu'), 'a', 'click', (e) => {
+                e.preventDefault();
+                const page = e.target.getAttribute('data-page');
+                this.navigateToPage(page);
+            });
 
-    // Example function to show notifications
-    const showNotification = (message) => {
-        const notification = document.createElement('div');
-        notification.className = 'notification';
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        setTimeout(() => {
-            notification.remove();
-        }, 3000);
+            // Initialize with overview page
+            this.navigateToPage('overview');
+        },
+
+        registerPageRenderer(page, renderer) {
+            this.pageRenderers.set(page, renderer);
+        },
+
+        navigateToPage(page) {
+            if (this.currentPage === page) return; // Already on this page
+
+            // Hide all pages efficiently
+            const sections = document.querySelectorAll('.page-section');
+            sections.forEach(section => section.style.display = 'none');
+
+            // Show target page
+            const targetSection = Utils.getElement(page);
+            if (targetSection) {
+                targetSection.style.display = 'block';
+                this.currentPage = page;
+
+                // Call page renderer if exists
+                const renderer = this.pageRenderers.get(page);
+                if (renderer) {
+                    renderer();
+                }
+
+                // Handle special page logic
+                this.handleSpecialPageLogic(page);
+            }
+        },
+
+        handleSpecialPageLogic(page) {
+            switch (page) {
+                case 'review':
+                    updateReviewAssetDropdown();
+                    Utils.getElement('review-canvas').innerHTML = '';
+                    Utils.getElement('review-comments-panel').innerHTML = '';
+                    break;
+            }
+        }
     };
 
-    // Call initialization functions
-    initDragAndDrop();
-    showNotification('Welcome to the Content Management Tool!');
+    // Optimized drag and drop system
+    const DragDropManager = {
+        init() {
+            // Use event delegation for drag and drop
+            document.addEventListener('dragover', this.handleDragOver.bind(this));
+            document.addEventListener('drop', this.handleDrop.bind(this));
+            document.addEventListener('dragstart', this.handleDragStart.bind(this));
+            document.addEventListener('dragend', this.handleDragEnd.bind(this));
+        },
 
-    document.querySelectorAll('.nav-menu a').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const page = this.getAttribute('data-page');
-            document.querySelectorAll('.page-section').forEach(section => {
-                section.style.display = section.id === page ? 'block' : 'none';
-            });
-            // Optionally, call render functions for each page
-            if (page === "editorial-projects") renderEditorialProjects();
-            if (page === "analytics-dashboard") renderAnalyticsDashboard();
-            if (page === "integrations-hub") renderIntegrationsHub();
-            if (page === "assets") renderAssets();
-            if (page === "samples") renderSamples();
-            if (page === "workflow") renderWorkflow();
-            if (page === "review") {
-                updateReviewAssetDropdown();
-                document.getElementById('review-canvas').innerHTML = '';
-                document.getElementById('review-comments-panel').innerHTML = '';
+        handleDragOver(e) {
+            if (e.target.matches('.calendar-day, .calendar, [data-drop-zone]')) {
+                e.preventDefault();
+                e.target.classList.add('dragover');
             }
-            if (page === "overview") renderOverview();
-            if (page === "style-guide") renderStyleGuide();
-        });
-    });
+        },
 
-    // Role selection logic
-    const roleSelect = document.getElementById('role-select');
-    const roleInfo = document.getElementById('role-info');
-    if (roleSelect) {
-        roleSelect.addEventListener('change', function() {
-            const roles = {
-                "studio-manager": "Configure workflows and manage production.",
-                "planning-team": "Schedule sessions and monitor progress.",
-                "sample-manager": "Manage samples and track their status.",
-                "stylist": "Coordinate styling and manage creative briefs.",
-                "photography-team": "Execute shoots and organize assets.",
-                "copywriter": "Create and optimize content.",
-                "art-director": "Review and approve creative assets.",
-                "post-production-vendor": "Handle editing and asset delivery."
-            };
-            const selected = this.value;
-            roleInfo.textContent = roles[selected] || "";
-        });
-    }
+        handleDragStart(e) {
+            if (e.target.matches('.calendar-task, [draggable="true"]')) {
+                e.dataTransfer.setData('text/plain', e.target.dataset.task || e.target.textContent);
+                e.target.classList.add('dragging');
+            }
+        },
 
-    // Drag-and-drop for calendar tasks
-    document.querySelectorAll('.calendar-task').forEach(task => {
-        task.addEventListener('dragstart', function(e) {
-            e.dataTransfer.setData('text/plain', this.dataset.task);
-        });
-    });
+        handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            document.querySelectorAll('.dragover').forEach(el => el.classList.remove('dragover'));
+        },
 
-    document.querySelectorAll('.calendar-day').forEach(day => {
-        day.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            this.classList.add('dragover');
-        });
-        day.addEventListener('dragleave', function() {
-            this.classList.remove('dragover');
-        });
-        day.addEventListener('drop', function(e) {
-            e.preventDefault();
-            this.classList.remove('dragover');
-            const taskName = e.dataTransfer.getData('text/plain');
-            this.innerHTML += `<div class="calendar-task">${taskName}</div>`;
-            const log = document.getElementById('calendar-log');
-            log.textContent = `Scheduled "${taskName}" for ${this.dataset.day}`;
-        });
-    });
+        handleDrop(e) {
+            if (e.target.matches('.calendar-day')) {
+                e.preventDefault();
+                e.target.classList.remove('dragover');
+                const data = e.dataTransfer.getData('text/plain');
+                console.log(`Dropped: ${data}`);
+                NotificationManager.show(`Scheduled "${data}" for ${e.target.dataset.day}`, 'success');
+            }
+        }
+    };
 
-    // Sample Management logic
-    const samples = [
-        { id: 'SMP001', name: 'Red Dress', status: 'Checked In', location: 'Shelf A1', barcode: '1234567890' },
-        { id: 'SMP002', name: 'Blue Jeans', status: 'Checked Out', location: 'Studio', barcode: '0987654321' },
-        { id: 'SMP003', name: 'Green Shirt', status: 'Checked In', location: 'Shelf B2', barcode: '1122334455' }
-    ];
+    // Initialize core systems
+    DragDropManager.init();
+    NavigationManager.init();
+    NotificationManager.show('Welcome to the Content Management Tool!', 'success');
 
-    const locations = [
-        { name: 'Building 1', rooms: [
-            { name: 'Room A', shelves: ['Shelf A1', 'Shelf A2'] },
-            { name: 'Room B', shelves: ['Shelf B1', 'Shelf B2'] }
-        ]},
-        { name: 'Studio', rooms: [] }
-    ];
+    // Role selection logic (optimized)
+    const RoleManager = {
+        roles: {
+            "studio-manager": "Configure workflows and manage production.",
+            "planning-team": "Schedule sessions and monitor progress.",
+            "sample-manager": "Manage samples and track their status.",
+            "stylist": "Coordinate styling and manage creative briefs.",
+            "photography-team": "Execute shoots and organize assets.",
+            "copywriter": "Create and optimize content.",
+            "art-director": "Review and approve creative assets.",
+            "post-production-vendor": "Handle editing and asset delivery."
+        },
 
-    // Bulk actions for Sample Management
-    function renderBulkActions() {
-        const list = document.getElementById('sample-list');
-        if (!list) return;
-        let bulkBar = document.getElementById('bulk-bar');
-        if (bulkBar) bulkBar.remove();
+        init() {
+            const roleSelect = Utils.getElement('role-select');
+            const roleInfo = Utils.getElement('role-info');
+            
+            if (roleSelect && roleInfo) {
+                roleSelect.addEventListener('change', (e) => {
+                    const selected = e.target.value;
+                    roleInfo.textContent = this.roles[selected] || "";
+                });
+            }
+        }
+    };
 
-        bulkBar = document.createElement('div');
-        bulkBar.id = 'bulk-bar';
-        bulkBar.style.display = 'flex';
-        bulkBar.style.gap = '12px';
-        bulkBar.style.marginBottom = '18px';
+    RoleManager.init();
 
-        bulkBar.innerHTML = `
-            <button id="bulk-checkin" class="nav-btn">Bulk Check In</button>
-            <button id="bulk-checkout" class="nav-btn">Bulk Check Out</button>
-            <button id="bulk-move" class="nav-btn">Bulk Move</button>
-            <span style="margin-left:auto;color:#888;">Select samples below for bulk actions</span>
-        `;
-        list.parentNode.insertBefore(bulkBar, list);
+    // Sample Management System (optimized)
+    const SampleManager = {
+        samples: [
+            { id: 'SMP001', name: 'Red Dress', status: 'Checked In', location: 'Shelf A1', barcode: '1234567890' },
+            { id: 'SMP002', name: 'Blue Jeans', status: 'Checked Out', location: 'Studio', barcode: '0987654321' },
+            { id: 'SMP003', name: 'Green Shirt', status: 'Checked In', location: 'Shelf B2', barcode: '1122334455' }
+        ],
 
-        document.getElementById('bulk-checkin').onclick = () => {
-            document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                const idx = parseInt(cb.dataset.idx);
-                samples[idx].status = 'Checked In';
-                samples[idx].location = 'Shelf A1';
-            });
-            renderSamples(document.getElementById('sample-search').value);
-        };
-        document.getElementById('bulk-checkout').onclick = () => {
-            document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                const idx = parseInt(cb.dataset.idx);
-                samples[idx].status = 'Checked Out';
-                samples[idx].location = 'Studio';
-            });
-            renderSamples(document.getElementById('sample-search').value);
-        };
-        document.getElementById('bulk-move').onclick = () => {
-            const selector = document.createElement('select');
-            selector.innerHTML = locations.map(loc =>
+        locations: [
+            { name: 'Building 1', rooms: [
+                { name: 'Room A', shelves: ['Shelf A1', 'Shelf A2'] },
+                { name: 'Room B', shelves: ['Shelf B1', 'Shelf B2'] }
+            ]},
+            { name: 'Studio', rooms: [] }
+        ],
+
+        currentFilter: '',
+
+        init() {
+            // Event delegation for sample actions
+            const sampleList = Utils.getElement('sample-list');
+            if (sampleList) {
+                Utils.delegateEvent(sampleList.parentNode, '.checkin', 'click', this.handleCheckIn.bind(this));
+                Utils.delegateEvent(sampleList.parentNode, '.checkout', 'click', this.handleCheckOut.bind(this));
+                Utils.delegateEvent(sampleList.parentNode, '.move', 'click', this.handleMove.bind(this));
+                Utils.delegateEvent(sampleList.parentNode, '[data-action="ai-sample-enhance"]', 'click', this.handleAIEnhance.bind(this));
+            }
+
+            // Search functionality with debouncing
+            const sampleSearch = Utils.getElement('sample-search');
+            if (sampleSearch) {
+                sampleSearch.addEventListener('input', Utils.debounce((e) => {
+                    this.currentFilter = e.target.value;
+                    this.render();
+                }, 300));
+            }
+
+            // Mock scan functionality
+            const scanBtn = Utils.getElement('scan-btn');
+            if (scanBtn) {
+                scanBtn.addEventListener('click', this.mockScan.bind(this));
+            }
+
+            NavigationManager.registerPageRenderer('samples', () => this.render());
+        },
+
+        handleCheckIn(e) {
+            const idx = this.getSampleIndex(e.target);
+            if (idx >= 0) {
+                this.samples[idx].status = 'Checked In';
+                this.samples[idx].location = 'Shelf A1';
+                this.render();
+                NotificationManager.show('Sample checked in successfully', 'success');
+            }
+        },
+
+        handleCheckOut(e) {
+            const idx = this.getSampleIndex(e.target);
+            if (idx >= 0) {
+                this.samples[idx].status = 'Checked Out';
+                this.samples[idx].location = 'Studio';
+                this.render();
+                NotificationManager.show('Sample checked out successfully', 'success');
+            }
+        },
+
+        handleMove(e) {
+            const idx = this.getSampleIndex(e.target);
+            if (idx >= 0) {
+                this.showLocationSelector(idx, e.target);
+            }
+        },
+
+        handleAIEnhance(e) {
+            const idx = this.getSampleIndex(e.target);
+            if (idx >= 0) {
+                showAISampleEnhanceModal(this.samples[idx]);
+            }
+        },
+
+        getSampleIndex(element) {
+            const sampleItem = element.closest('.sample-item');
+            const checkbox = sampleItem?.querySelector('.sample-checkbox');
+            return checkbox ? parseInt(checkbox.dataset.idx) : -1;
+        },
+
+        showLocationSelector(idx, element) {
+            const selector = Utils.createElement('select');
+            selector.innerHTML = this.locations.map(loc =>
                 `<optgroup label="${loc.name}">` +
                 loc.rooms.map(room =>
                     `<optgroup label="${room.name}">` +
@@ -168,39 +396,57 @@ document.addEventListener('DOMContentLoaded', () => {
                 ).join('') +
                 `</optgroup>`
             ).join('');
-            selector.onchange = () => {
-                document.querySelectorAll('.sample-checkbox:checked').forEach(cb => {
-                    const idx = parseInt(cb.dataset.idx);
-                    samples[idx].location = selector.value;
-                });
-                renderSamples(document.getElementById('sample-search').value);
-            };
-            bulkBar.appendChild(selector);
-        };
-    }
+            
+            selector.addEventListener('change', () => {
+                this.samples[idx].location = selector.value;
+                this.render();
+                NotificationManager.show('Sample moved successfully', 'success');
+            });
+            
+            element.closest('.sample-actions').appendChild(selector);
+        },
 
-    function renderSamples(filter = '') {
-        const list = document.getElementById('sample-list');
-        if (!list) return;
-        let foundBarcodes = new Set();
-        list.innerHTML = '';
-        samples
-            .map((sample, idx) => ({ sample, idx }))
-            .filter(({ sample }) =>
-                sample.name.toLowerCase().includes(filter.toLowerCase()) ||
-                sample.id.toLowerCase().includes(filter.toLowerCase()) ||
-                sample.barcode.includes(filter)
-            )
-            .forEach(({ sample, idx }) => {
-                // Duplicate barcode alert
+        mockScan() {
+            const codes = this.samples.map(s => s.barcode);
+            const randomCode = codes[Math.floor(Math.random() * codes.length)];
+            const sampleSearch = Utils.getElement('sample-search');
+            if (sampleSearch) {
+                sampleSearch.value = randomCode;
+                this.currentFilter = randomCode;
+                this.render();
+                NotificationManager.show(`Scanned barcode: ${randomCode}`, 'info');
+            }
+        },
+
+        getFilteredSamples() {
+            if (!this.currentFilter) return this.samples.map((sample, idx) => ({ sample, idx }));
+            
+            const filter = this.currentFilter.toLowerCase();
+            return this.samples
+                .map((sample, idx) => ({ sample, idx }))
+                .filter(({ sample }) =>
+                    sample.name.toLowerCase().includes(filter) ||
+                    sample.id.toLowerCase().includes(filter) ||
+                    sample.barcode.includes(filter)
+                );
+        },
+
+        render() {
+            const sampleList = Utils.getElement('sample-list');
+            if (!sampleList) return;
+
+            const filteredSamples = this.getFilteredSamples();
+            const foundBarcodes = new Set();
+
+            // Create sample elements
+            const sampleElements = filteredSamples.map(({ sample, idx }) => {
+                // Check for duplicate barcodes
                 if (foundBarcodes.has(sample.barcode)) {
-                    showNotification(`Duplicate barcode detected: ${sample.barcode}`);
+                    NotificationManager.show(`Duplicate barcode detected: ${sample.barcode}`, 'error');
                 }
                 foundBarcodes.add(sample.barcode);
 
-                const item = document.createElement('div');
-                item.className = 'sample-item';
-                item.innerHTML = `
+                const item = Utils.createElement('div', 'sample-item', `
                     <input type="checkbox" class="sample-checkbox" data-idx="${idx}" style="margin-right:16px;">
                     <div class="sample-info">
                         <strong>${sample.name}</strong>
@@ -215,76 +461,97 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="move">Move</button>
                         <button class="nav-btn" data-action="ai-sample-enhance">AI Enhance</button>
                     </div>
-                `;
-                // Button logic
-                item.querySelector('.checkin').addEventListener('click', () => {
-                    sample.status = 'Checked In';
-                    sample.location = 'Shelf A1';
-                    renderSamples(document.getElementById('sample-search').value);
-                });
-                item.querySelector('.checkout').addEventListener('click', () => {
-                    sample.status = 'Checked Out';
-                    sample.location = 'Studio';
-                    renderSamples(document.getElementById('sample-search').value);
-                });
-                item.querySelector('.move').addEventListener('click', () => {
-                    // Show location hierarchy selector
-                    const selector = document.createElement('select');
-                    selector.innerHTML = locations.map(loc =>
-                        `<optgroup label="${loc.name}">` +
-                        loc.rooms.map(room =>
-                            `<optgroup label="${room.name}">` +
-                            room.shelves.map(shelf =>
-                                `<option value="${shelf}">${shelf}</option>`
-                            ).join('') +
-                            `</optgroup>`
-                        ).join('') +
-                        `</optgroup>`
-                    ).join('');
-                    selector.addEventListener('change', () => {
-                        sample.location = selector.value;
-                        renderSamples(document.getElementById('sample-search').value);
-                    });
-                    item.querySelector('.sample-actions').appendChild(selector);
-                });
-                item.querySelector('[data-action="ai-sample-enhance"]').onclick = () => showAISampleEnhanceModal(sample);
-                list.appendChild(item);
+                `);
+                return item;
             });
 
-        // Alert for missing samples
-        if (samples.length === 0) {
-            showNotification('No samples found!');
+            // Batch update DOM
+            Utils.batchUpdate(sampleList, sampleElements);
+
+            // Show alert for no samples
+            if (this.samples.length === 0) {
+                NotificationManager.show('No samples found!', 'info');
+            }
+
+            this.renderBulkActions();
+        },
+
+        renderBulkActions() {
+            const list = Utils.getElement('sample-list');
+            if (!list) return;
+            
+            // Remove any existing bulk bar
+            const existingBulkBar = document.querySelector('#bulk-bar');
+            if (existingBulkBar) existingBulkBar.remove();
+
+            const bulkBar = Utils.createElement('div', '', `
+                <div style="display:flex;gap:12px;margin-bottom:18px;">
+                    <button id="bulk-checkin" class="nav-btn">Bulk Check In</button>
+                    <button id="bulk-checkout" class="nav-btn">Bulk Check Out</button>
+                    <button id="bulk-move" class="nav-btn">Bulk Move</button>
+                    <span style="margin-left:auto;color:#888;">Select samples below for bulk actions</span>
+                </div>
+            `);
+            bulkBar.id = 'bulk-bar';
+
+            // Event listeners for bulk actions
+            Utils.delegateEvent(bulkBar, '#bulk-checkin', 'click', this.bulkCheckIn.bind(this));
+            Utils.delegateEvent(bulkBar, '#bulk-checkout', 'click', this.bulkCheckOut.bind(this));
+            Utils.delegateEvent(bulkBar, '#bulk-move', 'click', this.bulkMove.bind(this));
+
+            list.parentNode.insertBefore(bulkBar, list);
+        },
+
+        bulkCheckIn() {
+            this.bulkAction((sample) => {
+                sample.status = 'Checked In';
+                sample.location = 'Shelf A1';
+            });
+        },
+
+        bulkCheckOut() {
+            this.bulkAction((sample) => {
+                sample.status = 'Checked Out';
+                sample.location = 'Studio';
+            });
+        },
+
+        bulkMove() {
+            const selector = Utils.createElement('select');
+            selector.innerHTML = this.locations.map(loc =>
+                `<optgroup label="${loc.name}">` +
+                loc.rooms.map(room =>
+                    `<optgroup label="${room.name}">` +
+                    room.shelves.map(shelf =>
+                        `<option value="${shelf}">${shelf}</option>`
+                    ).join('') +
+                    `</optgroup>`
+                ).join('') +
+                `</optgroup>`
+            ).join('');
+            
+            selector.addEventListener('change', () => {
+                this.bulkAction((sample) => {
+                    sample.location = selector.value;
+                });
+            });
+            
+            const bulkBar = Utils.getElement('bulk-bar');
+            if (bulkBar) bulkBar.appendChild(selector);
+        },
+
+        bulkAction(action) {
+            const checkedBoxes = document.querySelectorAll('.sample-checkbox:checked');
+            checkedBoxes.forEach(cb => {
+                const idx = parseInt(cb.dataset.idx);
+                action(this.samples[idx]);
+            });
+            this.render();
+            NotificationManager.show(`Bulk action applied to ${checkedBoxes.length} samples`, 'success');
         }
+    };
 
-        // Render bulk actions bar
-        renderBulkActions();
-    }
-
-    // Initial render when switching to Sample Management
-    document.querySelector('[data-page="samples"]').addEventListener('click', () => {
-        renderSamples();
-    });
-
-    // Search/filter logic
-    const sampleSearch = document.getElementById('sample-search');
-    if (sampleSearch) {
-        sampleSearch.addEventListener('input', (e) => {
-            renderSamples(e.target.value);
-        });
-    }
-
-    // Mock scan logic
-    const scanBtn = document.getElementById('scan-btn');
-    if (scanBtn) {
-        scanBtn.addEventListener('click', () => {
-            // Simulate scanning a barcode
-            const codes = samples.map(s => s.barcode);
-            const randomCode = codes[Math.floor(Math.random() * codes.length)];
-            sampleSearch.value = randomCode;
-            renderSamples(randomCode);
-            showNotification(`Scanned barcode: ${randomCode}`);
-        });
-    }
+    SampleManager.init();
 
     // --- Advanced Planning Calendar Features ---
 
